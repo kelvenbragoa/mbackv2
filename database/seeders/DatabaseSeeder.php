@@ -20,6 +20,20 @@ class DatabaseSeeder extends Seeder
         //     'name' => 'Test User',
         //     'email' => 'test@example.com',
         // ]);
+        DB::table('categories')->insert([
+            ['id'=>2,'name' => 'Shows','image'=>'category/festas.jpeg'],
+            ['id'=>3,'name' => 'Shows','image'=>'category/infantil.jpeg'],
+            ['id'=>4,'name' => 'Shows','image'=>'category/teatro.jpeg'],
+            ['id'=>5,'name' => 'Shows','image'=>'category/arraia.jpeg'],
+            ['id'=>6,'name' => 'Shows','image'=>'category/palestra.jpeg'],
+            ['id'=>7,'name' => 'Shows','image'=>'category/food.jpeg'],
+            ['id'=>8,'name' => 'Shows','image'=>'category/esportes.jpeg'],
+            ['id'=>9,'name' => 'Shows','image'=>'category/live.jpg'],
+            ['id'=>10,'name' => 'Shows','image'=>'category/festas.jpeg'],
+            ['id'=>11,'name' => 'Shows','image'=>'ccategory/ZTrm651j7Mc2whWAeoVj7FUWe9SNZWYueIwVNJGM....'],
+           ]);
+
+
         DB::table('genders')->insert([
             ['name' => 'Masculino',],
             ['name' => 'Feminino',],
