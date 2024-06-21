@@ -168,6 +168,10 @@ class PromotorEventsController extends Controller
         //
         $event = Event::find($id);
         $data = $request->all();
+
+        $data['start_date'] = date('Y-m-d',strtotime($data['start_date']));
+        $data['end_date'] = date('Y-m-d',strtotime($data['end_date']));
+
         if($request->has('image')){
             $imageName = time().'.'.$request->image->extension();
             $request->file('image')->storeAs('public/event',$imageName);

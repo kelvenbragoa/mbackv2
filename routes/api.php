@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserAuthController;
+use App\Http\Controllers\Api\web\admin\AdminTicketsController;
+use App\Http\Controllers\Api\web\admin\AdminTransactionController;
 use App\Http\Controllers\Api\web\NotficationController;
 use App\Http\Controllers\Api\web\promotor\PromotorBarController;
 use App\Http\Controllers\Api\web\promotor\PromotorBarmanController;
@@ -58,6 +60,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('promotor-customers', PromotorCustomerInviteController::class);
     Route::resource('promotor-profile', PromotorProfileController::class);
     Route::resource('notifications', NotficationController::class);
+
+    Route::resource('admin-transacoes', AdminTransactionController::class);
+    Route::resource('admin-tickets', AdminTicketsController::class);
+
 });
 
 //ROTAS PROTOCOLO
