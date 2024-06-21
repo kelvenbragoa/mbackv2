@@ -17,7 +17,7 @@ class WelcomePageController extends Controller
         //
         $categories= Category::orderBy('name','asc')->get();
 
-        $events= Event::with('user')->with('province')->where('status_id',2)->with('type')->orderBy('created_at','desc')->paginate(10);
+        $events= Event::with('user')->with('province')->where('status_id',2)->with('type')->orderBy('end_date','desc')->paginate(9);
 
         return response()->json([
             "categories"=>$categories,

@@ -36,8 +36,6 @@ class PromotorLineUpsController extends Controller
             'name'=>$data['name'],
             'description'=>$data['description'],
             'event_id'=>$data['event_id'],
-            'start_date'=>date('Y-m-d',strtotime($data['start_date'])),
-            'end_date'=>date('Y-m-d',strtotime($data['end_date'])),
             'start_time'=>$data['start_time'],
             'end_time'=>$data['end_time'],
         ]);

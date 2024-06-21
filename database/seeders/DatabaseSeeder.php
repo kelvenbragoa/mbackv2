@@ -22,15 +22,15 @@ class DatabaseSeeder extends Seeder
         // ]);
         DB::table('categories')->insert([
             ['id'=>2,'name' => 'Shows','image'=>'category/festas.jpeg'],
-            ['id'=>3,'name' => 'Shows','image'=>'category/infantil.jpeg'],
-            ['id'=>4,'name' => 'Shows','image'=>'category/teatro.jpeg'],
-            ['id'=>5,'name' => 'Shows','image'=>'category/arraia.jpeg'],
-            ['id'=>6,'name' => 'Shows','image'=>'category/palestra.jpeg'],
-            ['id'=>7,'name' => 'Shows','image'=>'category/food.jpeg'],
-            ['id'=>8,'name' => 'Shows','image'=>'category/esportes.jpeg'],
-            ['id'=>9,'name' => 'Shows','image'=>'category/live.jpg'],
-            ['id'=>10,'name' => 'Shows','image'=>'category/festas.jpeg'],
-            ['id'=>11,'name' => 'Shows','image'=>'ccategory/ZTrm651j7Mc2whWAeoVj7FUWe9SNZWYueIwVNJGM....'],
+            ['id'=>3,'name' => 'Infantil','image'=>'category/infantil.jpeg'],
+            ['id'=>4,'name' => 'Teatro e Espectáculo','image'=>'category/teatro.jpeg'],
+            ['id'=>5,'name' => 'Festas','image'=>'category/arraia.jpeg'],
+            ['id'=>6,'name' => 'Palestras e Congresso','image'=>'category/palestra.jpeg'],
+            ['id'=>7,'name' => 'Gastronomia','image'=>'category/food.jpeg'],
+            ['id'=>8,'name' => 'Esportes','image'=>'category/esportes.jpeg'],
+            ['id'=>9,'name' => 'Tecnologia','image'=>'category/live.jpg'],
+            ['id'=>10,'name' => 'Lives','image'=>'category/festas.jpeg'],
+            ['id'=>11,'name' => 'Passeios e Tour','image'=>'category/ZTrm651j7Mc2whWAeoVj7FUWe9SNZWYueIwVNJGM....'],
            ]);
 
 

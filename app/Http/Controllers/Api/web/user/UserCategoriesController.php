@@ -38,7 +38,7 @@ class UserCategoriesController extends Controller
     public function show(string $id)
     {
         //
-        $event = Event::with('user')->with('province')->where('status_id',2)->where('main_category_id', $id)->orWhere('second_category_id', $id)->with('type')->orderBy('created_at','desc')->get();
+        $event = Event::with('user')->with('province')->where('status_id',2)->where('main_category_id', $id)->with('type')->orderBy('created_at','desc')->get();
 
         return response()->json([
             "events"=>$event,
