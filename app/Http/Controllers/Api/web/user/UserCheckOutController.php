@@ -42,7 +42,7 @@ class UserCheckOutController extends Controller
         $order = [];
         $string = substr(str_shuffle(str_repeat($x='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil(3/strlen($x)) )),1,4);
         $transaction = Transaction::orderBy('id','desc')->first();
-        $add = $transaction->id + 1;
+        $add = $transaction->id ?? 0 + 1;
         $ref = 'MT'.$add.'T'.$string.$add;
         $amount= $data['amount'];
         $msisdn = $data['paymentNumber'];
