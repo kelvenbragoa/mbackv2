@@ -80,6 +80,9 @@ class PromotorTicketController extends Controller
         $data = $request->all();
         $ticket = Ticket::find($id);
 
+        $data['start_date'] = date('Y-m-d',strtotime($data['start_date']));
+        $data['end_date'] = date('Y-m-d',strtotime($data['end_date']));
+
         $ticket->update($data);
         return response()->json([
             "ticket"=>$ticket
