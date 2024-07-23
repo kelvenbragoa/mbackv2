@@ -44,7 +44,7 @@ Route::post('cashless-recharge',[UserCashlessController::class,'recharge']);
 
 
 
-Route::middleware('auth:sanctum')->group(function () {
+// Route::middleware('auth:sanctum')->group(function () {
     Route::get('auxiliar-event/{id}',[PromotorEventsController::class,'auxiliar']);
     Route::get('promotor-bar/{id}/copy',[PromotorBarController::class,'copy']);
     Route::resource('promotor-eventos', PromotorEventsController::class);
@@ -64,7 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('admin-transacoes', AdminTransactionController::class);
     Route::resource('admin-tickets', AdminTicketsController::class);
 
-});
+// });
 
 //ROTAS PROTOCOLO
 Route::post('/protocol-login', [\App\Http\Controllers\Api\mobile\protocols\AuthController::class, 'login']);
