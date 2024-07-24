@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\web\user\UserCategoriesController;
 use App\Http\Controllers\Api\web\user\UserCheckOutController;
 use App\Http\Controllers\Api\web\user\UserEventsController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
+use App\Http\Middleware\Sanctum;
 
 // Route::get('/user', function (Request $request) {
 //     return $request->user();
@@ -31,8 +32,8 @@ use App\Http\Controllers\Api\web\user\WelcomePageController;
 Route::post('register',[UserAuthController::class,'register']);
 Route::post('login',[UserAuthController::class,'login']);
 Route::post('updatepassword',[UserAuthController::class,'login']);
-Route::post('logout',[UserAuthController::class,'logout'])
-->middleware('auth:sanctum');
+Route::post('logout',[UserAuthController::class,'logout'])->middleware(Sanctum::class);;
+// ->middleware('auth:sanctum');
 
 Route::resource('homepage', WelcomePageController::class);
 Route::resource('eventos', UserEventsController::class);
@@ -44,7 +45,7 @@ Route::post('cashless-recharge',[UserCashlessController::class,'recharge']);
 
 
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware([Sanctum::class])->group(function () {
     Route::get('auxiliar-event/{id}',[PromotorEventsController::class,'auxiliar']);
     Route::get('promotor-bar/{id}/copy',[PromotorBarController::class,'copy']);
     Route::resource('promotor-eventos', PromotorEventsController::class);
