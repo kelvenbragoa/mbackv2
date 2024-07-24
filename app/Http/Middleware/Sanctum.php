@@ -19,6 +19,7 @@ class Sanctum
     public function handle(Request $request, Closure $next) 
     {
         // $bearer = $request->bearerToken();
+        return $request->header();
         $tokenWithBearer = $request->header('Authorization');
         $bearer = substr($tokenWithBearer, 7);
 
