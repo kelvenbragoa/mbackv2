@@ -16,11 +16,11 @@ class Sanctum
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next) : Response
+    public function handle(Request $request, Closure $next)
     {
         $bearer = $request->bearerToken();
 
-        return $bearer;
+        return $request->all();
         if (!$bearer) {
             return response()->json([
                 'success' => false,
