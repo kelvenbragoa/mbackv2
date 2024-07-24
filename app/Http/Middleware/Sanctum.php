@@ -19,6 +19,8 @@ class Sanctum
     public function handle(Request $request, Closure $next)
     {
         $bearer = $request->bearerToken();
+
+        return $bearer;
         if (!$bearer) {
             return response()->json([
                 'success' => false,
