@@ -38,11 +38,9 @@ class Sanctum
         $url = explode("|", $tokenWithBearer);
         $id = $url[1];
 
-        // $instance = DB::table('personal_access_tokens')->where('token',$id)->first();
-        $instance = DB::select('select * from personal_access_tokens where token = ?', $id);
+        $instance = DB::table('personal_access_tokens')->where('token',$id);
 
         return $instance;
-
 
         
 
