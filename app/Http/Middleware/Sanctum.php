@@ -31,10 +31,12 @@ class Sanctum
                 'error' => 'Autorization required!',
             ],401);
         }
+
+        return $tokenWithBearer;
         [$id, $token] = explode('|', $tokenWithBearer, 2);
         $instance = DB::table('personal_access_tokens')->find($id);
 
-        return $instance;
+        
 
         if (hash('sha256', $id) === $instance->token)
         {
