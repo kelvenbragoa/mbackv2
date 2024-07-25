@@ -40,6 +40,8 @@ class Sanctum
 
         $instance = DB::table('personal_access_tokens')->find($id);
 
+        return $instance;
+
         
 
         if (hash('sha256', $id) === $instance->token)
