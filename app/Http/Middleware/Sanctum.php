@@ -34,26 +34,23 @@ class Sanctum
 
         // return $tokenWithBearer;
         // [$id, $token] = explode('|', $tokenWithBearer, 2);
-
         $url = explode("|", $tokenWithBearer);
         $id = $url[1];
+        $instance = DB::table('personal_access_tokens')->where('token',hash('sha256', $id))->first();
 
-        $instance = DB::table('personal_access_tokens')->where('token',$id);
 
-        return $instance;
-
-        
-
-        if (hash('sha256', $id) === $instance->token)
-        {
-
-            if ($user = User::find($instance->tokenable_id))
+        if($instance){
+            if (hash('sha256', $id) === $instance->token)
             {
-                Auth::login($user);
-                return $next($request);
+
+                if ($user = User::find($instance->tokenable_id))
+                {
+                    Auth::login($user);
+                    return $next($request);
+                }
             }
         }
-
+        
         return response()->json([
             'success' => false,
             'error' => 'Access denied.',
