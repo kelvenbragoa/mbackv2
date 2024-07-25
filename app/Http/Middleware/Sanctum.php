@@ -34,7 +34,7 @@ class Sanctum
         [$id, $token] = explode('|', $tokenWithBearer, 2);
         $instance = DB::table('personal_access_tokens')->find($id);
 
-        if (hash('sha256', $token) === $instance->token)
+        if (hash('sha256', $id) === $instance->token)
         {
 
             if ($user = User::find($instance->tokenable_id))
