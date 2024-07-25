@@ -40,6 +40,8 @@ class Sanctum
 
         $instance = DB::table('personal_access_tokens')->where('token',$id)->first();
 
+        return $instance;
+
 
         
 
