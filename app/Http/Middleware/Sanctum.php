@@ -38,7 +38,6 @@ class Sanctum
         $url = explode("|", $tokenWithBearer);
         $id = $url[1];
 
-        return $id;
         $instance = DB::table('personal_access_tokens')->find($id);
 
         
