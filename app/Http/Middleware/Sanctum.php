@@ -19,20 +19,19 @@ class Sanctum
     public function handle(Request $request, Closure $next) 
     {
         // $bearer = $request->bearerToken();
-        return $request->header();
-        $tokenWithBearer = $request->header('Authorization');
-        $bearer = substr($tokenWithBearer, 7);
+        // return $request->header();
+        $tokenWithBearer = $request->header('token');
 
         return $tokenWithBearer;
 
 
-        if (!$bearer) {
+        if (!$tokenWithBearer) {
             return response()->json([
                 'success' => false,
                 'error' => 'Autorization required!',
             ],401);
         }
-        [$id, $token] = explode('|', $bearer, 2);
+        [$id, $token] = explode('|', $tokenWithBearer, 2);
         $instance = DB::table('personal_access_tokens')->find($id);
 
         if (hash('sha256', $token) === $instance->token)
