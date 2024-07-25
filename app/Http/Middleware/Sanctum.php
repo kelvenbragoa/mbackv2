@@ -22,7 +22,7 @@ class Sanctum
         // return $request->header();
         $tokenWithBearer = $request->header('token');
 
-        return $tokenWithBearer;
+        // return $tokenWithBearer;
 
 
         if (!$tokenWithBearer) {
