@@ -32,8 +32,6 @@ class Sanctum
             ],401);
         }
 
-        // return $tokenWithBearer;
-        // [$id, $token] = explode('|', $tokenWithBearer, 2);
         $url = explode("|", $tokenWithBearer);
         $id = $url[1];
         $instance = DB::table('personal_access_tokens')->where('token',hash('sha256', $id))->first();

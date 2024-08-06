@@ -65,6 +65,8 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::resource('admin-transacoes', AdminTransactionController::class);
     Route::resource('admin-tickets', AdminTicketsController::class);
 
+    Route::get('promotor-dashboard/{id}/bilhetes',[PromotorDashboardController::class,'bilhetes']);
+
 });
 
 //ROTAS PROTOCOLO

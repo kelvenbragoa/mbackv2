@@ -30,5 +30,9 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'whatsapp' => [
+        'from-phone-number-id' => env('WHATSAPP_FROM_PHONE_NUMBER_ID'),
+        'token' => env('WHATSAPP_TOKEN'),
+    ],
 
 ];

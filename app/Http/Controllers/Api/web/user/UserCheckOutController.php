@@ -11,6 +11,7 @@ use App\Models\TemporarySellDetails;
 use App\Models\TemporaryTransaction;
 use App\Models\Ticket;
 use App\Models\Transaction;
+use App\Notifications\TicketPaid;
 use Illuminate\Http\Request;
 
 class UserCheckOutController extends Controller
@@ -153,6 +154,8 @@ class UserCheckOutController extends Controller
                     $temporarySell->transaction()->delete();
                     $temporarySell->selldetails()->delete();
                     $temporarySell->delete();
+
+                    
 
 
                     return response()->json([

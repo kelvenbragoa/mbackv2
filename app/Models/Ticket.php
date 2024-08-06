@@ -19,4 +19,8 @@ class Ticket extends Model
         return $this->hasMany('App\Models\SellDetails', 'ticket_id', 'id');
     }
 
+    public function sell(){
+        return $this->hasMany('App\Models\Sell', 'ticket_id', 'id');
+    }
+
 }
