@@ -9,4 +9,10 @@ class CustomerInvite extends Model
 {
     use HasFactory;
     protected $guarded = [];
+
+    public function invite(){
+        return $this->hasOne('App\Models\Invite', 'id', 'invite_id');
+    }
+
+
 }

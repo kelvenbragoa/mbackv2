@@ -66,6 +66,9 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::resource('admin-tickets', AdminTicketsController::class);
 
     Route::get('promotor-dashboard/{id}/bilhetes',[PromotorDashboardController::class,'bilhetes']);
+    Route::get('promotor-dashboard/{id}/pacotes',[PromotorDashboardController::class,'pacotes']);
+    Route::get('promotor-dashboard/{id}/convites',[PromotorDashboardController::class,'convites']);
+    Route::get('promotor-dashboard/{id}/lineups',[PromotorDashboardController::class,'lineups']);
 
 });
 
