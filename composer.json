@@ -7,12 +7,14 @@
     "require": {
         "php": "^8.2",
         "abdulmueid/mpesa": "^2.0",
+        "barryvdh/laravel-dompdf": "^2.2",
         "intervention/image": "^2",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
         "netflie/laravel-notification-whatsapp": "^1.3",
+        "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-sluggable": "^3.6",
         "twilio/sdk": "^8.2"
     },

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\web\user;
 
 use App\Http\Controllers\Controller;
+use App\Mail\SendTickets;
 use App\Models\Event;
 use App\Models\Sell;
 use App\Models\SellDetails;
@@ -13,6 +14,7 @@ use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Notifications\TicketPaid;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class UserCheckOutController extends Controller
 {
@@ -99,7 +101,7 @@ class UserCheckOutController extends Controller
 
             try {
                 $c2b = $transactionmpesa->c2b(
-                    $amount, //valor a cobrar do cliente
+                    1, //valor a cobrar do cliente
                     $msisdn, // número de telefone do cliente vodacom com mpesa registrado
                     $ref, //referencia do pagamento
                     $ref //referencia do pagamento
@@ -155,8 +157,15 @@ class UserCheckOutController extends Controller
                     $temporarySell->selldetails()->delete();
                     $temporarySell->delete();
 
-                    
+                    $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
+                    $detail = SellDetails::where('sell_id',$sell->id)->get();
 
+                    try {
+                        Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                            } catch (\Throwable $th) {
+                                
+                            }
+                    
 
                     return response()->json([
                         'order'=>$order,
