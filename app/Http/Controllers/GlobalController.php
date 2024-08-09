@@ -21,11 +21,13 @@ class GlobalController extends Controller
     //
     public function sendtwilio()
     {
+        $url = $this->ticketdownload(8);
         $receiverNumber = 'whatsapp:+258842648618'; // Replace with the recipient's phone number
         $message = 'mensagem de teste'; // Replace with your desired message
         // $mediaUrl = 'https://mticket.co.mz/demo/images/logo2.png'; // Replace with the media URL
         // $mediaUrl = 'https://inogest-atas.s3.amazonaws.com/meeting-attachment/qPBGAXU72RPO9m5M2VuS4jFDjO1yHhIiuvYUtQfP.pdf?response-content-disposition=attachment&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAV2FXJ6Y2RJHFRKWL%2F20240809%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240809T054758Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Signature=0e8696f1c8dd8c6c8595848645ebf6ce79476b389d5ab514fa1ffd1357c81de0';
-        $mediaUrl = 'https://backend.mticket.co.mz/ticketdownload/8';
+        // $mediaUrl = 'https://backend.mticket.co.mz/ticketdownload/8';
+        $mediaUrl = $url;
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_AUTH_TOKEN');
         $fromNumber = env('TWILIO_NUMBER');
@@ -64,6 +66,7 @@ class GlobalController extends Controller
         // } catch (Exception $e) {
         //     return 'Error: ' . $e->getMessage();
         // }
+        
         $email = "kelvenbragoa@hotmail.com";
         $name = "Kelven Bragoa";
         $mobile = "842648618";
