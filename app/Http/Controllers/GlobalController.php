@@ -144,12 +144,12 @@ class GlobalController extends Controller
             $detail = SellDetails::where('sell_id',$id)->get();
             $event = Event::find($sell->event_id);
 
-             $pdf = Pdf::loadView('pdf.ticket', compact('detail','event'))->setOptions([
-            'defaultFont' => 'sans-serif',
-            'isRemoteEnabled' => 'true'
-            ]);
-            return $pdf->setPaper('a4')->stream('ticket.pdf');
 
+            $pdf = PDF::loadView('pdf.ticket', compact('detail','event'));
+            $fileName = 'ticket-'.$id.'.pdf';
+            $pdf->save(storage_path('app/public/tickets/'.$fileName));
+
+            return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
 
         }
         
