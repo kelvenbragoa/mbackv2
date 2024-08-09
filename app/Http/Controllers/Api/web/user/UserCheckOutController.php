@@ -15,6 +15,12 @@ use App\Models\Transaction;
 use App\Notifications\TicketPaid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Exception;
+use Twilio\Rest\Client;
+
+
+
 
 class UserCheckOutController extends Controller
 {
@@ -162,6 +168,7 @@ class UserCheckOutController extends Controller
 
                     try {
                         Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                        // $this->sendtwilio($data['customerMobile'],$sell->id);
                             } catch (\Throwable $th) {
                                 
                             }
@@ -285,6 +292,7 @@ class UserCheckOutController extends Controller
 
                     try {
                         Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                        // $this->sendtwilio($data['customerMobile'],$sell->id);
                             } catch (\Throwable $th) {
                                 
                             }
@@ -339,5 +347,47 @@ class UserCheckOutController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function sendtwilio($number,$sell_id)
+    {
+        $url = $this->ticketdownload($sell_id);
+        $receiverNumber = 'whatsapp:+258'.$number; // Replace with the recipient's phone number
+        $message = 'Obrigado pela sua compra. O bilhete encontra-se em anexo. Este bilhete é intransmissivel. Para suporte contacte o seguinte email: suporte@mticket.co.mz'; // Replace with your desired message
+        // $mediaUrl = 'https://mticket.co.mz/demo/images/logo2.png'; // Replace with the media URL
+        // $mediaUrl = 'https://inogest-atas.s3.amazonaws.com/meeting-attachment/qPBGAXU72RPO9m5M2VuS4jFDjO1yHhIiuvYUtQfP.pdf?response-content-disposition=attachment&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAV2FXJ6Y2RJHFRKWL%2F20240809%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240809T054758Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Signature=0e8696f1c8dd8c6c8595848645ebf6ce79476b389d5ab514fa1ffd1357c81de0';
+        // $mediaUrl = 'https://backend.mticket.co.mz/ticketdownload/8';
+        $mediaUrl = $url;
+        $sid = env('TWILIO_SID');
+        $token = env('TWILIO_AUTH_TOKEN');
+        $fromNumber = env('TWILIO_NUMBER');
+
+        try {
+            $client = new Client($sid, $token);
+            $client->messages->create($receiverNumber, [
+                'from' => $fromNumber,
+                'body' => $message,
+                'mediaUrl'=>$mediaUrl
+            ]);
+
+            
+        } catch (Exception $e) {
+            
+        }
+    }
+
+    public function ticketdownload($id){
+
+        $sell = Sell::find($id);
+        $detail = SellDetails::where('sell_id',$id)->get();
+        $event = Event::find($sell->event_id);
+
+
+        $pdf = PDF::loadView('pdf.ticket', compact('detail','event'));
+        $fileName = 'ticket-'.$id.'.pdf';
+        $pdf->save(storage_path('app/public/tickets/'.$fileName));
+
+        return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
+
     }
 }
