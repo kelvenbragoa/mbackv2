@@ -279,6 +279,15 @@ class UserCheckOutController extends Controller
             }
             
         }
+
+        $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
+                    $detail = SellDetails::where('sell_id',$sell->id)->get();
+
+                    try {
+                        Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                            } catch (\Throwable $th) {
+                                
+                            }
         return response()->json([
             'order'=>$order,
         ]);

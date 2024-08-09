@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api\web\admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\SendTickets;
+use App\Models\Event;
 use App\Models\Sell;
 use App\Models\SellDetails;
 use App\Models\TemporarySell;
 use App\Models\TemporaryTransaction;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class AdminTransactionController extends Controller
 {
@@ -58,6 +61,7 @@ class AdminTransactionController extends Controller
         //
         $temporaryTransaction = TemporaryTransaction::find($id);
         $temporarySell = TemporarySell::find($id);
+        $event = Event::find($temporarySell->event_id);
 
         $sell = Sell::create([
             'event_id'=>$temporarySell->event_id,
@@ -105,6 +109,15 @@ class AdminTransactionController extends Controller
             ->with('sell.event')
             ->orderBy('id','desc')
             ->paginate(50);
+
+            $msg_content = "Olá, {$sell->name}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
+            $detail = SellDetails::where('sell_id',$sell->id)->get();
+
+            try {
+                Mail::to($sell->email)->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                    } catch (\Throwable $th) {
+                        
+                    }
 
 
         return response()->json([
