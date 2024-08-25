@@ -147,7 +147,6 @@ class GlobalController extends Controller
             $detail = SellDetails::where('sell_id',$id)->get();
             $event = Event::find($sell->event_id);
 
-
             $pdf = PDF::loadView('pdf.ticket', compact('detail','event'));
             $fileName = 'ticket-'.$id.'.pdf';
             $pdf->save(storage_path('app/public/tickets/'.$fileName));

@@ -53,7 +53,10 @@ class SellController extends Controller
                 'qty'=>$item->qtd,
                 'price'=>$item->ticket->price,
                 'total'=>$item->ticket->price*$item->qtd,
-                'status'=>1
+                'status'=>1,
+                'name'=>'Mticket',
+                'email'=>'suporte@mticket.co.mz',
+                'mobile'=>'842648618',
             ]);
 
             Transaction::create([
@@ -72,6 +75,9 @@ class SellController extends Controller
                     'event_id'=>$item->event_id,
                     'ticket_id'=>$item->ticket_id,
                     'status'=>1,
+                    'name'=>'Mticket',
+                    'email'=>'suporte@mticket.co.mz',
+                    'mobile'=>'842648618',
                 ]);
             }
         }

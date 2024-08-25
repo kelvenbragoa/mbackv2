@@ -30,11 +30,6 @@ class UserAuthController extends Controller
                 'message' => 'Usuario/Password incorrectos'
             ],401);
         }
-        // $user = User::where('email',$loginUserData['email'])->first();
-        // if(!$user || !Hash::check($loginUserData['password'],$user->password)){
-           
-        // }
-            
         
     }
 
