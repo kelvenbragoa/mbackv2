@@ -108,6 +108,7 @@ class UserCheckOutController extends Controller
             try {
                 $c2b = $transactionmpesa->c2b(
                     $amount, //valor a cobrar do cliente
+                    // 1, //valor a cobrar do cliente
                     $msisdn, // número de telefone do cliente vodacom com mpesa registrado
                     $ref, //referencia do pagamento
                     $ref //referencia do pagamento

@@ -70,6 +70,12 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::get('promotor-dashboard/{id}/convites',[PromotorDashboardController::class,'convites']);
     Route::get('promotor-dashboard/{id}/lineups',[PromotorDashboardController::class,'lineups']);
 
+    Route::get('download-report/{id}/products',[PromotorDashboardController::class,'bar_report']);
+
+    Route::get('download-invite/{id}',[PromotorCustomerInviteController::class,'downloadinvite']);
+
+
+
 });
 
 //ROTAS PROTOCOLO

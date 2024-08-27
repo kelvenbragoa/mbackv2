@@ -13,6 +13,9 @@ class CustomerInvite extends Model
     public function invite(){
         return $this->hasOne('App\Models\Invite', 'id', 'invite_id');
     }
+    public function event(){
+        return $this->hasOne('App\Models\Event', 'id', 'event_id');
+    }
 
 
 }

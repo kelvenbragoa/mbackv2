@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api\web\promotor;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomerInvite;
+use App\Models\Event;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class PromotorCustomerInviteController extends Controller
 {
@@ -44,6 +47,10 @@ class PromotorCustomerInviteController extends Controller
     public function show(string $id)
     {
         //
+        $customer = CustomerInvite::with('invite')->with('event.province')->find($id);
+        return response()->json(
+            ["customer"=>$customer
+        ]);
     }
 
     /**
@@ -75,5 +82,17 @@ class PromotorCustomerInviteController extends Controller
             return response()->noContent();
 
         
+    }
+
+    public function downloadinvite($id){
+
+        $customer = CustomerInvite::with('invite')->with('event.province')->find($id);
+        $event = Event::find($customer->event_id);
+
+        $pdf = Pdf::loadView('pdf.invite', compact('customer','event'))->setOptions([
+            'defaultFont' => 'sans-serif',
+            'isRemoteEnabled' => 'true'
+        ]);
+        return $pdf->setPaper('a4')->download('invite.pdf');
     }
 }

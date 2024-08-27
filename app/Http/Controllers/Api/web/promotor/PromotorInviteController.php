@@ -100,4 +100,6 @@ class PromotorInviteController extends Controller
             return abort(404,"Erro Ao apagar");
         }
     }
+
+    
 }
