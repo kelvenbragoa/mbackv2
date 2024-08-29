@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
+use Illuminate\Support\Facades\Notification;
 use Twilio\Rest\Client;
 
 
@@ -169,6 +170,7 @@ class UserCheckOutController extends Controller
 
                     try {
                         Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                        $this->sendwhatsapp($data['customerMobile'],$sell->id);
                         // $this->sendtwilio($data['customerMobile'],$sell->id);
                             } catch (\Throwable $th) {
                                 
@@ -293,7 +295,7 @@ class UserCheckOutController extends Controller
 
                     try {
                         Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
-                        // $this->sendtwilio($data['customerMobile'],$sell->id);
+                        $this->sendwhatsapp($data['customerMobile'],$sell->id);
                             } catch (\Throwable $th) {
                                 
                             }
@@ -348,6 +350,16 @@ class UserCheckOutController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    public function sendwhatsapp($number,$sell_id){
+        try {
+            $url = $this->ticketdownload($sell_id);
+            $ticket = new TicketPaid($url,$sell_id,$number);
+            Notification::send($number,$ticket);
+        } catch (Exception $e) {
+            return $e;
+        }
     }
 
     public function sendtwilio($number,$sell_id)

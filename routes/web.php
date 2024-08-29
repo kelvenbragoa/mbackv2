@@ -9,7 +9,7 @@ Route::get('/', function () {
 
 // Route::get('sendtwilio',[GlobalController::class,'sendtwilio']);
 
-// Route::get('sendsms',[GlobalController::class,'sendSms']);
+Route::get('sendsms',[GlobalController::class,'sendSms']);
 
 // Route::get('sendmail',[GlobalController::class,'sendmail']);
 

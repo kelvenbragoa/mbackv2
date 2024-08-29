@@ -19,11 +19,14 @@ use Illuminate\Support\Facades\Mail;
 class GlobalController extends Controller
 {
     //
-    public function sendtwilio($number,$sell_id)
+    public function sendtwilio()
     {
-        $url = $this->ticketdownload($sell_id);
-        $receiverNumber = 'whatsapp:+258'.$number; // Replace with the recipient's phone number
-        $message = 'Obrigado pela sua compra. O bilhete encontra-se em anexo. Este bilhete é intransmissivel. Para suporte contacte o seguinte email: suporte@mticket.co.mz'; // Replace with your desired message
+        // $url = $this->ticketdownload($sell_id);
+        $url = "http://backend.mticket.co.mz/storage/tickets/ticket-8.pdf";
+        // $receiverNumber = 'whatsapp:+258'.$number; // Replace with the recipient's phone number
+        $receiverNumber = 'whatsapp:+258842648618'; // Replace with the recipient's phone number
+
+        $message = 'Obrigado pela sua compra. O bilhete encontra-se em anexo. Este bilhete é intransmissivel. Para suporte contacte o seguinte email: suporte@mticket.co.mz, telefone: +258 84 264 8618 / 84 228 0974'; // Replace with your desired message
         // $mediaUrl = 'https://mticket.co.mz/demo/images/logo2.png'; // Replace with the media URL
         // $mediaUrl = 'https://inogest-atas.s3.amazonaws.com/meeting-attachment/qPBGAXU72RPO9m5M2VuS4jFDjO1yHhIiuvYUtQfP.pdf?response-content-disposition=attachment&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAV2FXJ6Y2RJHFRKWL%2F20240809%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240809T054758Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Signature=0e8696f1c8dd8c6c8595848645ebf6ce79476b389d5ab514fa1ffd1357c81de0';
         // $mediaUrl = 'https://backend.mticket.co.mz/ticketdownload/8';
@@ -48,24 +51,6 @@ class GlobalController extends Controller
 
     public function sendSms(Request $request)
     {
-        // $receiverNumber = 'whatsapp:+258842648618'; // Replace with the recipient's phone number
-        // $message = 'mensagem de teste'; // Replace with your desired message
-
-        // $sid = env('TWILIO_SID');
-        // $token = env('TWILIO_AUTH_TOKEN');
-        // $fromNumber = env('TWILIO_NUMBER');
-
-        // try {
-        //     $client = new Client($sid, $token);
-        //     $client->messages->create($receiverNumber, [
-        //         'from' => $fromNumber,
-        //         'body' => $message
-        //     ]);
-
-        //     return 'SMS Sent Successfully.';
-        // } catch (Exception $e) {
-        //     return 'Error: ' . $e->getMessage();
-        // }
         
         $email = "kelvenbragoa@hotmail.com";
         $name = "Kelven Bragoa";
@@ -89,7 +74,7 @@ class GlobalController extends Controller
             // $ticket->toWhatsapp();
             // dd($ticket->toWhatsapp());
         } catch (Exception $e) {
-            return response()->json($e);
+            return $e;
         }
 
         
