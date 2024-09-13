@@ -98,6 +98,15 @@ Route::get('/sells/{id}', [\App\Http\Controllers\Api\mobile\protocols\SellContro
 Route::get('/sells-detail/{id}', [\App\Http\Controllers\Api\mobile\protocols\SellController::class, 'selldetails']);
 Route::delete('/cart/{id}/user/{userid}',[\App\Http\Controllers\Api\mobile\protocols\CartsController::class,'destroy']);
 Route::get('/get-status/{id}', [\App\Http\Controllers\Api\mobile\protocols\TicketsController::class, 'status']);
+
+
+Route::get('/allinvites/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'index']);
+Route::get('/doneinvites/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'done']);
+Route::get('/pendinginvites/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'pending']);
+Route::get('/invite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'invitesdetail']);
+Route::get('/verifyinvite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'verifyinvites']);
+Route::get('/get-status-invite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'status']);
+
 //ROTAS BARMAN
 
 Route::post('/barman-login', [\App\Http\Controllers\Api\mobile\barman\AuthController::class, 'login']);
