@@ -47,17 +47,17 @@ class SellController extends Controller
 
         $last_sell = SellBar::where('user_id',$data['user_id'])->where('event_id',$data['event_id'])->where('total',$data['total'])->where('method',$data['method'])->orderBy('id','desc')->first();
 
-        if($last_sell != null){
+        // if($last_sell != null){
 
-            $seconds = now()->diffInSeconds($last_sell->created_at);
+        //     $seconds = now()->diffInSeconds($last_sell->created_at);
 
-            if($seconds < 15){
-                return response([
-                    'message' => 'Verifique as suas vendas.',
-                ],200);
-            }
+        //     if($seconds < 15){
+        //         return response([
+        //             'message' => 'Verifique as suas vendas.',
+        //         ],200);
+        //     }
 
-        }
+        // }
 
         $mycartverfify = CartBar::where('user_id', $data['user_id'] )->where('sell_id',null)->get();
 
