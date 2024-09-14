@@ -72,6 +72,9 @@ Route::middleware([Sanctum::class])->group(function () {
 
     Route::get('download-report/{id}/products',[PromotorDashboardController::class,'bar_report']);
 
+    Route::get('download-report/{id}/tickets',[PromotorDashboardController::class,'ticket_report']);
+
+
     Route::get('download-invite/{id}',[PromotorCustomerInviteController::class,'downloadinvite']);
 
 

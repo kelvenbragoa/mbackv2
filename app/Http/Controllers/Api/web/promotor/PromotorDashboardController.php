@@ -366,7 +366,7 @@ class PromotorDashboardController extends Controller
       
        
         $pdf = Pdf::loadView(
-            'superadmin.events.report-ticket', 
+            'pdf.ticketreport', 
             compact(
                 'event',
                 'tickets_local',
