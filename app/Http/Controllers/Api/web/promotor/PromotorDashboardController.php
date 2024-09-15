@@ -376,7 +376,6 @@ class PromotorDashboardController extends Controller
 
         $pending_tickets = SellDetails::where('event_id',$event->id)->where('status',1)->count();
 
-        return $tickets_local_true;
 
         $tickets_local_amount = 0;
 
