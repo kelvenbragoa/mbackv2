@@ -339,20 +339,44 @@ class PromotorDashboardController extends Controller
         $event = Event::find($event_id);
         $sells = SellDetails::where('event_id', $event)->get();
         $tickets_local = Sell::where('event_id',$event->id)->where('user_id',0)->get();
-        $tickets_online = Sell::where('event_id',$event->id)->where('user_id','!=',0)->where('user_id','!=',55)->get();
+        // $tickets_online = Sell::where('event_id',$event->id)->where('user_id','!=',0)->orWhere('user_id',null)->get();
+
+        $tickets_online = Sell::where('event_id', $event->id)
+        ->where(function($query) {
+            $query->where('user_id', '!=', 0)
+                ->orWhereNull('user_id');
+        })
+        ->get();
+
+
+        // return $tickets_online;
+
+
         $invites_online = Sell::where('event_id',$event->id)->where('user_id',55)->get();
 
         $tickets_local_true = SellDetails::where('event_id',$event->id)->where('user_id',0)->where('status',1)->get();
         $tickets_local_false = SellDetails::where('event_id',$event->id)->where('user_id',0)->where('status',0)->get();
-        $tickets_online_true = SellDetails::where('event_id',$event->id)->where('user_id','!=',0)->where('user_id','!=',55)->where('status',1)->get();
-        $tickets_online_false = SellDetails::where('event_id',$event->id)->where('user_id','!=',0)->where('user_id','!=',55)->where('status',0)->get();
+        // $tickets_online_true = SellDetails::where('event_id',$event->id)->where('user_id','!=',0)->where('status',1)->get();
+        // $tickets_online_false = SellDetails::where('event_id',$event->id)->where('user_id','!=',0)->where('status',0)->get();
+        $tickets_online_true = Sell::where('event_id', $event->id)->where('status',1)
+        ->where(function($query) {
+            $query->where('user_id', '!=', 0)
+                ->orWhereNull('user_id');
+        });
+
+        $tickets_online_false = Sell::where('event_id', $event->id)->where('status',0)
+        ->where(function($query) {
+            $query->where('user_id', '!=', 0)
+                ->orWhereNull('user_id');
+        })
+        ->get();
         $invites_online_true = SellDetails::where('event_id',$event->id)->where('user_id',55)->where('status',1)->get();
         $invites_online_false = SellDetails::where('event_id',$event->id)->where('user_id',55)->where('status',0)->get();
 
 
         $pending_tickets = SellDetails::where('event_id',$event->id)->where('status',1)->count();
 
-
+        return $tickets_local_true;
 
         $tickets_local_amount = 0;
 
