@@ -116,7 +116,6 @@
     <h3 style="text-align:center" >Relatório das vendas bilhetes</h3>
     <h5><strong>Número de vendas fisicas</strong>: {{$tickets_local->sum('qty')}} ({{$tickets_local_amount}} MT)</h5>
     <h5><strong>Número de vendas online</strong>: {{$tickets_online->sum('qty')}} ({{$tickets_online->sum('total')}} MT)</h5>
-    {{-- <h5><strong>Convites Online</strong>: {{$invites_online->sum('qty')}} ({{$invites_online->sum('total')}} MT)</h5> --}}
     <h5><strong>Total Fisico e online</strong>: {{$tickets_local->sum('qty') + $tickets_online->sum('qty')}} ({{$tickets_local->sum('total') + $tickets_online->sum('total')}} MT)</h5>
     
 
@@ -124,7 +123,6 @@
 
     <h5><strong>Bilhetes Físicos</strong>: Validados: {{$tickets_local_false->count()}} , Não validados: {{$tickets_local_true->count()}}</h5>
     <h5><strong>Bilhetes Online</strong>: Validados: {{$tickets_online_false->count()}} , Não validados: {{$tickets_online_true->count()}}</h5>
-    {{-- <h5><strong>Convites Online</strong>: Validados: {{$invites_online_false->count()}} , Não validados: {{$invites_online_true->count()}}</h5> --}}
 
     <br>
 

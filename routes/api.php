@@ -61,6 +61,8 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::resource('promotor-customers', PromotorCustomerInviteController::class);
     Route::resource('promotor-profile', PromotorProfileController::class);
     Route::resource('notifications', NotficationController::class);
+    Route::post('promotor-customers-bulk',[PromotorCustomerInviteController::class,'storebulk']);
+
 
     Route::resource('admin-transacoes', AdminTransactionController::class);
     Route::resource('admin-tickets', AdminTicketsController::class);

@@ -7,7 +7,7 @@ use App\Models\CustomerInvite;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
-
+use Illuminate\Support\Facades\DB;
 
 class PromotorCustomerInviteController extends Controller
 {
@@ -36,6 +36,26 @@ class PromotorCustomerInviteController extends Controller
         $data = $request->all();
 
         $invite = CustomerInvite::create($data);
+        $customers = CustomerInvite::where('invite_id', $data['invite_id'])->get();
+
+        return response()->json($customers);
+    }
+
+    public function storebulk(Request $request){
+        $data = $request->all();
+
+        DB::transaction(function () use ($data) {
+            for ($i=1; $i <= $data['end']; $i++) { 
+            CustomerInvite::create([
+                    "name" =>$data["name"].'#'.$i,
+                    "event_id" =>$data["event_id"],
+                    "invite_id" =>$data["invite_id"],
+                    "status" =>$data["status"],
+            ]);
+            }
+        });
+
+        
         $customers = CustomerInvite::where('invite_id', $data['invite_id'])->get();
 
         return response()->json($customers);

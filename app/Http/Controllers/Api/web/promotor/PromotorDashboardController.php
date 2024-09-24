@@ -352,19 +352,16 @@ class PromotorDashboardController extends Controller
         // return $tickets_online;
 
 
-        $invites_online = Sell::where('event_id',$event->id)->where('user_id',55)->get();
 
         $tickets_local_true = SellDetails::where('event_id',$event->id)->where('user_id',0)->where('status',1)->get();
         $tickets_local_false = SellDetails::where('event_id',$event->id)->where('user_id',0)->where('status',0)->get();
-        // $tickets_online_true = SellDetails::where('event_id',$event->id)->where('user_id','!=',0)->where('status',1)->get();
-        // $tickets_online_false = SellDetails::where('event_id',$event->id)->where('user_id','!=',0)->where('status',0)->get();
-        $tickets_online_true = Sell::where('event_id', $event->id)->where('status',1)
+        $tickets_online_true = SellDetails::where('event_id', $event->id)->where('status',1)
         ->where(function($query) {
             $query->where('user_id', '!=', 0)
                 ->orWhereNull('user_id');
         });
 
-        $tickets_online_false = Sell::where('event_id', $event->id)->where('status',0)
+        $tickets_online_false = SellDetails::where('event_id', $event->id)->where('status',0)
         ->where(function($query) {
             $query->where('user_id', '!=', 0)
                 ->orWhereNull('user_id');
@@ -394,7 +391,6 @@ class PromotorDashboardController extends Controller
                 'event',
                 'tickets_local',
                 'tickets_online',
-                'invites_online',
                 'tickets_local_amount',
                 'tickets_local_true',
                 'tickets_local_false',
