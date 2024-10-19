@@ -49,7 +49,7 @@ class SellController extends Controller
 
         if($last_sell != null){
 
-            $seconds = now()->diffInSeconds($last_sell->created_at);
+            $seconds = now()->diffInRealSeconds($last_sell->created_at);
 
             if($seconds < 15){
                 return response([
