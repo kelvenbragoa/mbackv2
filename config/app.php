@@ -66,7 +66,7 @@ return [
     */
 
     // 'timezone' => env('APP_TIMEZONE', 'UTC'),
-    'timezone'=>'Africa/Maputo',
+    'timezone'=>'Africa/Johannesburg',
 
     /*
     |--------------------------------------------------------------------------
