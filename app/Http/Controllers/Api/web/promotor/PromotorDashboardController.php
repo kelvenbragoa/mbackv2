@@ -84,6 +84,7 @@ class PromotorDashboardController extends Controller
         $protocols = Protocol::where('event_id',$id)->orderBy('name','asc')->count();
         $barmans = Barman::where('event_id',$id)->with('barstore')->orderBy('name','asc')->count();
         $invites = Invite::where('event_id',$id)->orderBy('name','asc')->count();
+        $totalamount = $event->sell_bar_detail->sum('total');
 
         return response()->json([
             "tickets"=>$tickets,
@@ -95,6 +96,7 @@ class PromotorDashboardController extends Controller
             "barmans"=>$barmans,
             'invites'=>$invites,
             'event'=>$event,
+            'totalamount'=>$totalamount
         ]);
     }
 
