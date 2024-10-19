@@ -53,7 +53,7 @@ class SellController extends Controller
 
             if($seconds < 15){
                 return response([
-                    'message' => 'Verifique as suas vendas. Houve uma venda identica.',
+                    'message' => 'Verifique as suas vendas. Houve uma venda identica a '.$seconds.' segundos',
                 ],200);
             }
 
