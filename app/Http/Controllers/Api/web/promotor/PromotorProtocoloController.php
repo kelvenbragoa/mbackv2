@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\web\promotor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Protocol;
+use App\Models\SellDetails;
 use Illuminate\Http\Request;
 
 class PromotorProtocoloController extends Controller
@@ -68,7 +69,14 @@ class PromotorProtocoloController extends Controller
     {
         //
         $protocolo = Protocol::find($id);
-        return response()->json(["protocolo"=>$protocolo]);
+        $protocols = Protocol::where('event_id', $protocolo->event_id)->get();
+        $totalEscaneados = SellDetails::where('protocol_id', $id)->count();
+
+        return response()->json([
+            "protocolo"=>$protocolo,
+            "total"=>$totalEscaneados,
+            "protocols"=>$protocols
+        ]);
     }
 
     /**

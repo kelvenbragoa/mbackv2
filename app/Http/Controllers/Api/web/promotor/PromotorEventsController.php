@@ -115,7 +115,7 @@ class PromotorEventsController extends Controller
         $barstores = BarStore::where('event_id',$id)->with('products')->orderBy('id','desc')->get();
         $lineups = LineUp::where('event_id',$id)->orderBy('id','desc')->get();
         $product = Products::where('event_id',$id)->with('barstore')->orderBy('name','asc')->get();
-        $protocols = Protocol::where('event_id',$id)->orderBy('name','asc')->get();
+        $protocols = Protocol::where('event_id',$id)->withCount('tickets')->orderBy('name','asc')->get();
         $barmans = Barman::where('event_id',$id)->with('barstore')->orderBy('name','asc')->get();
         $invites = Invite::where('event_id',$id)->orderBy('name','asc')->get();
 
