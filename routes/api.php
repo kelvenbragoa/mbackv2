@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\mobile\client\ClientAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserAuthController;
@@ -29,10 +30,10 @@ use App\Http\Middleware\Sanctum;
 //     return $request->user();
 // })->middleware('auth:sanctum');
 
-Route::post('register',[UserAuthController::class,'register']);
-Route::post('login',[UserAuthController::class,'login']);
-Route::post('updatepassword',[UserAuthController::class,'login']);
-Route::post('logout',[UserAuthController::class,'logout'])->middleware(Sanctum::class);;
+Route::post('register', [UserAuthController::class, 'register']);
+Route::post('login', [UserAuthController::class, 'login']);
+Route::post('updatepassword', [UserAuthController::class, 'login']);
+Route::post('logout', [UserAuthController::class, 'logout'])->middleware(Sanctum::class);;
 // ->middleware('auth:sanctum');
 
 Route::resource('homepage', WelcomePageController::class);
@@ -40,14 +41,14 @@ Route::resource('eventos', UserEventsController::class);
 Route::resource('checkout', UserCheckOutController::class);
 Route::resource('categories', UserCategoriesController::class);
 Route::resource('cashless', UserCashlessController::class);
-Route::post('cashless-recharge',[UserCashlessController::class,'recharge']);
+Route::post('cashless-recharge', [UserCashlessController::class, 'recharge']);
 
 
 
 
 Route::middleware([Sanctum::class])->group(function () {
-    Route::get('auxiliar-event/{id}',[PromotorEventsController::class,'auxiliar']);
-    Route::get('promotor-bar/{id}/copy',[PromotorBarController::class,'copy']);
+    Route::get('auxiliar-event/{id}', [PromotorEventsController::class, 'auxiliar']);
+    Route::get('promotor-bar/{id}/copy', [PromotorBarController::class, 'copy']);
     Route::resource('promotor-eventos', PromotorEventsController::class);
     Route::resource('promotor-tickets', PromotorTicketController::class);
     Route::resource('promotor-invites', PromotorInviteController::class);
@@ -61,26 +62,23 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::resource('promotor-customers', PromotorCustomerInviteController::class);
     Route::resource('promotor-profile', PromotorProfileController::class);
     Route::resource('notifications', NotficationController::class);
-    Route::post('promotor-customers-bulk',[PromotorCustomerInviteController::class,'storebulk']);
+    Route::post('promotor-customers-bulk', [PromotorCustomerInviteController::class, 'storebulk']);
 
 
     Route::resource('admin-transacoes', AdminTransactionController::class);
     Route::resource('admin-tickets', AdminTicketsController::class);
 
-    Route::get('promotor-dashboard/{id}/bilhetes',[PromotorDashboardController::class,'bilhetes']);
-    Route::get('promotor-dashboard/{id}/pacotes',[PromotorDashboardController::class,'pacotes']);
-    Route::get('promotor-dashboard/{id}/convites',[PromotorDashboardController::class,'convites']);
-    Route::get('promotor-dashboard/{id}/lineups',[PromotorDashboardController::class,'lineups']);
+    Route::get('promotor-dashboard/{id}/bilhetes', [PromotorDashboardController::class, 'bilhetes']);
+    Route::get('promotor-dashboard/{id}/pacotes', [PromotorDashboardController::class, 'pacotes']);
+    Route::get('promotor-dashboard/{id}/convites', [PromotorDashboardController::class, 'convites']);
+    Route::get('promotor-dashboard/{id}/lineups', [PromotorDashboardController::class, 'lineups']);
 
-    Route::get('download-report/{id}/products',[PromotorDashboardController::class,'bar_report']);
+    Route::get('download-report/{id}/products', [PromotorDashboardController::class, 'bar_report']);
 
-    Route::get('download-report/{id}/tickets',[PromotorDashboardController::class,'ticket_report']);
-
-
-    Route::get('download-invite/{id}',[PromotorCustomerInviteController::class,'downloadinvite']);
+    Route::get('download-report/{id}/tickets', [PromotorDashboardController::class, 'ticket_report']);
 
 
-
+    Route::get('download-invite/{id}', [PromotorCustomerInviteController::class, 'downloadinvite']);
 });
 
 //ROTAS PROTOCOLO
@@ -101,7 +99,7 @@ Route::get('/cart/{id}', [\App\Http\Controllers\Api\mobile\protocols\CartsContro
 Route::post('/sells', [\App\Http\Controllers\Api\mobile\protocols\SellController::class, 'store']);
 Route::get('/sells/{id}', [\App\Http\Controllers\Api\mobile\protocols\SellController::class, 'index']);
 Route::get('/sells-detail/{id}', [\App\Http\Controllers\Api\mobile\protocols\SellController::class, 'selldetails']);
-Route::delete('/cart/{id}/user/{userid}',[\App\Http\Controllers\Api\mobile\protocols\CartsController::class,'destroy']);
+Route::delete('/cart/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\protocols\CartsController::class, 'destroy']);
 Route::get('/get-status/{id}', [\App\Http\Controllers\Api\mobile\protocols\TicketsController::class, 'status']);
 
 
@@ -121,11 +119,11 @@ Route::get('/barman-products/{id}/barstore/{bar_store_id}', [\App\Http\Controlle
 Route::get('/barman-product/{id}', [\App\Http\Controllers\Api\mobile\barman\ProductsController::class, 'productdetail']);
 Route::post('barman-carts', [\App\Http\Controllers\Api\mobile\barman\CartController::class, 'store']);
 Route::get('barman-cart/{id}', [\App\Http\Controllers\Api\mobile\barman\CartController::class, 'index']);
-Route::delete('/barman-cart/{id}/user/{userid}',[\App\Http\Controllers\Api\mobile\barman\CartController::class,'destroy']);
+Route::delete('/barman-cart/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\barman\CartController::class, 'destroy']);
 Route::post('/barman-sells', [\App\Http\Controllers\Api\mobile\barman\SellController::class, 'store']);
 Route::get('/barman-sells/{id}', [\App\Http\Controllers\Api\mobile\barman\SellController::class, 'index']);
 Route::get('/barman-sells-detail/{id}', [\App\Http\Controllers\Api\mobile\barman\SellController::class, 'selldetails']);
-Route::delete('/barman-sell/{id}/user/{userid}',[\App\Http\Controllers\Api\mobile\barman\SellController::class,'destroy']);
+Route::delete('/barman-sell/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\barman\SellController::class, 'destroy']);
 Route::get('/verifyreceipt/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\barman\SellController::class, 'verifyreceipt']);
 Route::get('/barman-register-card/{id}/{userid}', [\App\Http\Controllers\Api\mobile\barman\CardController::class, 'registerCard']);
 Route::get('/barman-view-card/{id}', [\App\Http\Controllers\Api\mobile\barman\CardController::class, 'viewCard']);
@@ -133,3 +131,73 @@ Route::get('/barman-topup-card/{id}/{top}/{userid}', [\App\Http\Controllers\Api\
 Route::get('/barman-get-status/{id}', [\App\Http\Controllers\Api\mobile\barman\SellController::class, 'status']);
 Route::get('/barman-operation/{id}', [\App\Http\Controllers\Api\mobile\barman\SellController::class, 'operation']);
 Route::get('/barman-refund-card/{id}/{userid}', [\App\Http\Controllers\Api\mobile\barman\CardController::class, 'refund']);
+
+
+
+
+Route::prefix('client')->group(function () {
+    Route::prefix('auth')->group(function () {
+        Route::post('/login', [ClientAuthController::class, 'login']);
+        Route::post('/register', [ClientAuthController::class, 'register']);
+    });
+
+    // Rotas protegidas (autenticadas)
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [ClientAuthController::class, 'logout']);
+        Route::post('/logout-all', [ClientAuthController::class, 'logoutAll']);
+        Route::get('/me', [ClientAuthController::class, 'me']);
+
+        // ========== EVENTOS ==========
+        Route::prefix('events')->group(function () {
+            Route::get('/featured', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'featured']);
+            Route::get('/upcoming', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'upcoming']);
+            Route::get('/search', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'search']);
+            Route::get('/suggestions', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'suggestions']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'show']);
+        });
+
+        // ========== CATEGORIAS ==========
+        Route::prefix('categories')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'index']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'show']);
+            Route::get('/{id}/events', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'events']);
+        });
+
+        // ========== FAVORITOS ==========
+        Route::prefix('favorites')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'store']);
+            Route::delete('/{eventId}', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'destroy']);
+            Route::get('/check', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'check']);
+            Route::get('/count', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'count']);
+        });
+
+        // ========== INGRESSOS ==========
+        Route::prefix('tickets')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'index']);
+            Route::get('/count', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'count']);
+            Route::get('/{ticketId}', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'show']);
+            Route::post('/{ticketId}/validate', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'validate']);
+            Route::get('/{ticketId}/transfer-options', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'transferOptions']);
+        });
+
+        // ========== BUSCA ==========
+        Route::prefix('search')->group(function () {
+            Route::get('/popular', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'popularSearches']);
+        });
+
+        // ========== BANNERS ==========
+        Route::prefix('banners')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\BannerController::class, 'index']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\BannerController::class, 'show']);
+        });
+    });
+
+    // ========== ROTAS PÚBLICAS (sem autenticação) ==========
+    Route::get('/categories', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'index']);
+    Route::get('/events/featured', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'featured']);
+    Route::get('/events/search', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'search']);
+    Route::get('/events/{id}', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'show']);
+    Route::get('/search/popular', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'popularSearches']);
+    Route::get('/banners', [\App\Http\Controllers\Api\Mobile\Client\BannerController::class, 'index']);
+});

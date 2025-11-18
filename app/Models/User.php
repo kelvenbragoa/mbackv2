@@ -71,4 +71,17 @@ class User extends Authenticatable
     public function gender(){
         return $this->hasOne('App\Models\Gender', 'id', 'gender_id');
     }
+
+    public function toApiArray()
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'mobile' => $this->mobile,
+            'email_verified_at' => $this->email_verified_at,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+        ];
+    }
 }

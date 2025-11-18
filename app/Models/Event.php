@@ -106,4 +106,10 @@ class Event extends Model
     public function invites(){
         return $this->hasMany('App\Models\Invite', 'event_id', 'id');
     }
+
+    public function getPriceAttribute()
+    {
+        $firstTicket = $this->tickets()->orderBy('price', 'asc')->first();
+        return $firstTicket ? (int) $firstTicket->price : 0;
+    }
 }
