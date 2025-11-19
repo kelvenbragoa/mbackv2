@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Mobile\Client;
+namespace App\Http\Controllers\Api\mobile\client;
 
 use App\Models\Event;
 use App\Models\LikeEvent;
