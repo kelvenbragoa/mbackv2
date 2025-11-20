@@ -149,55 +149,55 @@ Route::prefix('client')->group(function () {
 
         // ========== EVENTOS ==========
         Route::prefix('events')->group(function () {
-            Route::get('/featured', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'featured']);
-            Route::get('/upcoming', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'upcoming']);
-            Route::get('/search', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'search']);
-            Route::get('/suggestions', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'suggestions']);
-            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'show']);
+            Route::get('/featured', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'featured']);
+            Route::get('/upcoming', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'upcoming']);
+            Route::get('/search', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'search']);
+            Route::get('/suggestions', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'suggestions']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
         });
 
         // ========== CATEGORIAS ==========
         Route::prefix('categories')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'index']);
-            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'show']);
-            Route::get('/{id}/events', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'events']);
+            Route::get('/', [\App\Http\Controllers\Api\mobile\client\CategoryController::class, 'index']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\CategoryController::class, 'show']);
+            Route::get('/{id}/events', [\App\Http\Controllers\Api\mobile\client\CategoryController::class, 'events']);
         });
 
         // ========== FAVORITOS ==========
         Route::prefix('favorites')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'index']);
-            Route::post('/', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'store']);
-            Route::delete('/{eventId}', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'destroy']);
-            Route::get('/check', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'check']);
-            Route::get('/count', [\App\Http\Controllers\Api\Mobile\Client\FavoriteController::class, 'count']);
+            Route::get('/', [\App\Http\Controllers\Api\mobile\client\FavoriteController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\mobile\client\FavoriteController::class, 'store']);
+            Route::delete('/{eventId}', [\App\Http\Controllers\Api\mobile\client\FavoriteController::class, 'destroy']);
+            Route::get('/check', [\App\Http\Controllers\Api\mobile\client\FavoriteController::class, 'check']);
+            Route::get('/count', [\App\Http\Controllers\Api\mobile\client\FavoriteController::class, 'count']);
         });
 
         // ========== INGRESSOS ==========
         Route::prefix('tickets')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'index']);
-            Route::get('/count', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'count']);
-            Route::get('/{ticketId}', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'show']);
-            Route::post('/{ticketId}/validate', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'validate']);
-            Route::get('/{ticketId}/transfer-options', [\App\Http\Controllers\Api\Mobile\Client\TicketController::class, 'transferOptions']);
+            Route::get('/', [\App\Http\Controllers\Api\mobile\client\TicketController::class, 'index']);
+            Route::get('/count', [\App\Http\Controllers\Api\mobile\client\TicketController::class, 'count']);
+            Route::get('/{ticketId}', [\App\Http\Controllers\Api\mobile\client\TicketController::class, 'show']);
+            Route::post('/{ticketId}/validate', [\App\Http\Controllers\Api\mobile\client\TicketController::class, 'validate']);
+            Route::get('/{ticketId}/transfer-options', [\App\Http\Controllers\Api\mobile\client\TicketController::class, 'transferOptions']);
         });
 
         // ========== BUSCA ==========
         Route::prefix('search')->group(function () {
-            Route::get('/popular', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'popularSearches']);
+            Route::get('/popular', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'popularSearches']);
         });
 
         // ========== BANNERS ==========
         Route::prefix('banners')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\Mobile\Client\BannerController::class, 'index']);
-            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\BannerController::class, 'show']);
+            Route::get('/', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'index']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'show']);
         });
     });
 
     // ========== ROTAS PÚBLICAS (sem autenticação) ==========
-    Route::get('/categories', [\App\Http\Controllers\Api\Mobile\Client\CategoryController::class, 'index']);
-    Route::get('/events/featured', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'featured']);
-    Route::get('/events/search', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'search']);
-    Route::get('/events/{id}', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'show']);
-    Route::get('/search/popular', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'popularSearches']);
-    Route::get('/banners', [\App\Http\Controllers\Api\Mobile\Client\BannerController::class, 'index']);
+    Route::get('/categories', [\App\Http\Controllers\Api\mobile\client\CategoryController::class, 'index']);
+    Route::get('/events/featured', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'featured']);
+    Route::get('/events/search', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'search']);
+    Route::get('/events/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
+    Route::get('/search/popular', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'popularSearches']);
+    Route::get('/banners', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'index']);
 });
