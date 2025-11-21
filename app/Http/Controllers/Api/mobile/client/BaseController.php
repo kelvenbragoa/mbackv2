@@ -92,7 +92,9 @@ class BaseController extends Controller
         // Verificar se é favorito do usuário
         $isFavorite = false;
         if ($userId) {
-            $isFavorite = $event->like()->where('user_id', $userId)->exists();
+            $isFavorite = \App\Models\FavoriteEvent::where('user_id', $userId)
+                                                  ->where('event_id', $event->id)
+                                                  ->exists();
         }
 
         // Verificar se está esgotado
@@ -175,12 +177,16 @@ class BaseController extends Controller
     {
         $ticket = $sellDetails->ticket;
         $event = $sell->event;
+        $qrcodemticket = '{"s":'.$sellDetails->status.',"i":'.$sellDetails->id.',"ie":'.$event->id.'}';
         
         return [
             'id' => 'TKT-' . date('Y') . '-' . str_pad($sell->id, 6, '0', STR_PAD_LEFT),
+            'id_mticket'=>$sellDetails->id,
+            'qrcode_mticket'=>$qrcodemticket,
             'qr_code' => url('/qr/' . $sell->id), // Implementar geração de QR code
             'barcode' => $sell->id . str_pad($ticket->id, 10, '0', STR_PAD_LEFT),
             'status' => $this->getTicketStatus($sell),
+            'status_id'=>$sellDetails->status,
             'event' => [
                 'id' => $event->id,
                 'title' => $event->name,
@@ -201,7 +207,7 @@ class BaseController extends Controller
             'purchase' => [
                 'id' => 'PUR-' . date('Y') . '-' . str_pad($sell->id, 4, '0', STR_PAD_LEFT),
                 'total_amount' => (float) $sell->total,
-                'currency' => 'AOA',
+                'currency' => 'MZN',
                 'payment_method' => 'credit_card', // Implementar se necessário
                 'purchased_at' => $sell->created_at->toISOString()
             ],

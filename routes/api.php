@@ -149,11 +149,13 @@ Route::prefix('client')->group(function () {
 
         // ========== EVENTOS ==========
         Route::prefix('events')->group(function () {
-            Route::get('/featured', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'featured']);
-            Route::get('/upcoming', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'upcoming']);
-            Route::get('/search', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'search']);
-            Route::get('/suggestions', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'suggestions']);
-            Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
+            Route::get('/featured', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'featured']);
+            Route::get('/upcoming', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'upcoming']);
+            Route::get('/search', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'search']);
+            Route::get('/suggestions', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'suggestions']);
+            Route::get('/favorites', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'favorites']);
+            Route::post('/{id}/toggle-favorite', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'toggleEvent']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'show']);
         });
 
         // ========== CATEGORIAS ==========
@@ -191,7 +193,14 @@ Route::prefix('client')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'index']);
             Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'show']);
         });
+
+        Route::post('/usercheckout', [\App\Http\Controllers\Api\mobile\client\ClientCheckOutController::class, 'store']);
+
     });
+
+            
+
+
 
     // ========== ROTAS PÚBLICAS (sem autenticação) ==========
     Route::get('/categories', [\App\Http\Controllers\Api\mobile\client\CategoryController::class, 'index']);
@@ -200,4 +209,5 @@ Route::prefix('client')->group(function () {
     Route::get('/events/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
     Route::get('/search/popular', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'popularSearches']);
     Route::get('/banners', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'index']);
+    
 });

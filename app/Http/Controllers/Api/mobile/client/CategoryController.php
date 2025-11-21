@@ -70,7 +70,7 @@ class CategoryController extends BaseController
             
             $events = $category->events()
                               ->with(['city', 'province', 'tickets', 'sells', 'review', 'like'])
-                              ->where('status_id', 1)
+                              ->whereIn('status_id', [1,2,3])
                               ->where('start_date', '>=', now()->format('Y-m-d'))
                               ->orderBy('start_date', 'asc')
                               ->paginate($perPage);

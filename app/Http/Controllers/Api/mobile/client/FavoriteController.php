@@ -31,7 +31,7 @@ class FavoriteController extends BaseController
             $events = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
             ])->whereIn('id', $favoriteEventIds)
-              ->where('status_id', 1)
+              ->whereIn('status_id', [1,2,3])
               ->orderBy('created_at', 'desc')
               ->paginate($perPage);
 
@@ -72,7 +72,7 @@ class FavoriteController extends BaseController
 
             // Verificar se o evento existe e está ativo
             $event = Event::where('id', $eventId)
-                          ->where('status_id', 1)
+                        //   ->where('status_id', 1)
                           ->first();
 
             if (!$event) {

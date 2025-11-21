@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\mobile\client;
 
 use App\Models\Event;
+use App\Models\FavoriteEvent;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,7 +22,7 @@ class EventController extends BaseController
 
             $query = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like',
-            ])->where('status_id', 2); // Assumindo que status 1 é ativo
+            ])->whereIn('status_id', [1,2,3]); // Assumindo que status 1 é ativo
 
             if ($categoryId) {
                 $query->where('main_category_id', $categoryId);
@@ -35,8 +36,8 @@ class EventController extends BaseController
             $events = $query->paginate($limit);
             
 
-            $formattedEvents = $events->getCollection()->map(function ($event) use ($request) {
-                return $this->formatEvent($event);
+            $formattedEvents = $events->getCollection()->map(function ($event) {
+                return $this->formatEvent($event, Auth::id());
             });
 
             $events->setCollection($formattedEvents);
@@ -65,7 +66,7 @@ class EventController extends BaseController
 
             $query = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
-            ])->where('status_id', 1)
+            ])->whereIn('status_id', [1,2,3])
               ->where('start_date', '>=', now()->format('Y-m-d'));
 
             // Se tiver coordenadas, filtrar por cidade (simplificação)
@@ -105,7 +106,7 @@ class EventController extends BaseController
         try {
             $query = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
-            ])->where('status_id', 1);
+            ])->whereIn('status_id', [1,2,3]);
 
             // Filtro por texto
             if ($search = $request->get('q')) {
@@ -158,7 +159,7 @@ class EventController extends BaseController
 
             // Ordenação
             $sortBy = $request->get('sort_by', 'date');
-            $sortOrder = $request->get('sort_order', 'asc');
+            $sortOrder = $request->get('sort_order', 'desc');
 
             switch ($sortBy) {
                 case 'date':
@@ -207,7 +208,7 @@ class EventController extends BaseController
             if (strlen($search) >= 2) {
                 // Sugestões de eventos
                 $events = Event::where('name', 'like', "%{$search}%")
-                               ->where('status_id', 1)
+                               ->whereIn('status_id', [1,2,3])
                                ->limit(3)
                                ->get(['id', 'name']);
 
@@ -307,4 +308,142 @@ class EventController extends BaseController
             return $this->sendError('Erro ao buscar detalhes do evento', [], 500);
         }
     }
+
+    public function toggleEvent($id): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return $this->sendError('Usuário não autenticado', [], 401);
+            }
+
+            $event = Event::find($id);
+            
+            if (!$event) {
+                return $this->sendError('Evento não encontrado', [], 404);
+            }
+
+            // Verificar se já é favorito
+            $favorite = FavoriteEvent::where('user_id', $user->id)
+                                   ->where('event_id', $event->id)
+                                   ->first();
+
+            $isFavorited = false;
+            $message = '';
+
+            if ($favorite) {
+                // Se já é favorito, remover
+                $favorite->delete();
+                $isFavorited = false;
+                $message = 'Evento removido dos favoritos';
+            } else {
+                // Se não é favorito, adicionar
+                FavoriteEvent::create([
+                    'user_id' => $user->id,
+                    'event_id' => $event->id
+                ]);
+                $isFavorited = true;
+                $message = 'Evento adicionado aos favoritos';
+            }
+
+            return $this->sendResponse(
+                [
+                    'event_id' => $event->id,
+                    'is_favorited' => $isFavorited,
+                    'favorites_count' => FavoriteEvent::where('event_id', $event->id)->count()
+                ],
+                $message
+            );
+
+        } catch (\Exception $e) {
+            return $this->sendError('Erro ao alterar favorito', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get all favorite events for authenticated user.
+     */
+    public function favorites(Request $request): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return $this->sendError('Usuário não autenticado', [], 401);
+            }
+
+            $perPage = min($request->get('per_page', 20), 100);
+            $sortBy = $request->get('sort_by', 'created_at'); // created_at, date, name
+            $sortOrder = $request->get('sort_order', 'desc');
+
+            // Buscar eventos favoritos com relacionamentos usando leftJoin para evitar ambiguidade
+            $query = Event::with([
+                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
+            ])
+            ->leftJoin('favorite_events', 'events.id', '=', 'favorite_events.event_id')
+            ->where('favorite_events.user_id', $user->id)
+            ->select('events.*', 'favorite_events.created_at as favorited_at'); // Evitar ambiguidade na coluna id
+
+            // Aplicar ordenação
+            switch ($sortBy) {
+                case 'date':
+                    $query->orderBy('events.start_date', $sortOrder);
+                    break;
+                case 'name':
+                    $query->orderBy('events.name', $sortOrder);
+                    break;
+                case 'created_at':
+                default:
+                    // Ordenar pela data que foi favoritado
+                    $query->orderBy('favorite_events.created_at', $sortOrder);
+                    break;
+            }
+
+            $events = $query->paginate($perPage);
+
+            // Verificar se há eventos favoritos
+            if ($events->total() == 0) {
+                return $this->sendResponse(
+                    [
+                        'events' => [],
+                        'total_favorites' => 0
+                    ],
+                    'Nenhum evento favorito encontrado',
+                    [
+                        'pagination' => [
+                            'current_page' => 1,
+                            'per_page' => $perPage,
+                            'total' => 0,
+                            'total_pages' => 0,
+                            'has_more_pages' => false
+                        ]
+                    ]
+                );
+            }
+
+            $formattedEvents = $events->getCollection()->map(function ($event) use ($user) {
+                return $this->formatEvent($event, $user->id);
+            });
+
+            $events->setCollection($formattedEvents);
+
+            // Contar total de favoritos do usuário
+            $totalFavorites = FavoriteEvent::where('user_id', $user->id)->count();
+
+            return $this->sendResponse(
+                [
+                    'events' => $events->items(),
+                    'total_favorites' => $totalFavorites
+                ],
+                'Eventos favoritos recuperados com sucesso',
+                $this->formatPagination($events)
+            );
+
+        } catch (\Exception $e) {
+            return $this->sendError('Erro ao buscar eventos favoritos', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    
 }
