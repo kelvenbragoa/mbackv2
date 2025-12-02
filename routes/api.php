@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\web\user\UserCategoriesController;
 use App\Http\Controllers\Api\web\user\UserCheckOutController;
 use App\Http\Controllers\Api\web\user\UserEventsController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
+use App\Http\Controllers\GlobalController;
 use App\Http\Middleware\Sanctum;
 
 // Route::get('/user', function (Request $request) {
@@ -42,6 +43,8 @@ Route::resource('checkout', UserCheckOutController::class);
 Route::resource('categories', UserCategoriesController::class);
 Route::resource('cashless', UserCashlessController::class);
 Route::post('cashless-recharge', [UserCashlessController::class, 'recharge']);
+Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
+
 
 
 
@@ -149,13 +152,14 @@ Route::prefix('client')->group(function () {
 
         // ========== EVENTOS ==========
         Route::prefix('events')->group(function () {
-            Route::get('/featured', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'featured']);
-            Route::get('/upcoming', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'upcoming']);
-            Route::get('/search', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'search']);
-            Route::get('/suggestions', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'suggestions']);
-            Route::get('/favorites', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'favorites']);
-            Route::post('/{id}/toggle-favorite', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'toggleEvent']);
-            Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
+            Route::get('/featured', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'featured']);
+            Route::get('/upcoming', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'upcoming']);
+            Route::get('/search', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'search']);
+            Route::get('/suggestions', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'suggestions']);
+            Route::get('/favorites', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'favorites']);
+            Route::post('/generate-slugs', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'generateSlugs']);
+            Route::post('/{id}/toggle-favorite', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'toggleEvent']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'show']);
         });
 
         // ========== CATEGORIAS ==========

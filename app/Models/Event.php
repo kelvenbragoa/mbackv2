@@ -10,7 +10,7 @@ use Spatie\Sluggable\SlugOptions;
 class Event extends Model
 {
     use HasFactory;
-    // use HasSlug;
+    use HasSlug;
 
     protected $guarded = [];
 

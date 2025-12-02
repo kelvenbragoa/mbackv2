@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Api\mobile\client\BaseController;
 use App\Mail\SendTickets;
 use App\Models\Barman;
 use App\Models\Event;
@@ -15,8 +16,9 @@ use Illuminate\Support\Facades\Notification;
 use Twilio\Rest\Client;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
-class GlobalController extends Controller
+class GlobalController extends BaseController
 {
     //
     public function sendtwilio()
@@ -139,6 +141,78 @@ class GlobalController extends Controller
             return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
 
         }
+
+
+            /**
+     * Generate slugs for all events that don't have one.
+     */
+    public function generateSlugs(): JsonResponse
+    {
+        try {
+            // Buscar eventos sem slug ou com slug vazio/null
+            $eventsWithoutSlug = Event::where(function ($query) {
+                $query->whereNull('slug')
+                      ->orWhere('slug', '')
+                      ->orWhere('slug', 'like', '%-%-%'); // Slugs mal formados com muitos hífens
+            })->get();
+
+            if ($eventsWithoutSlug->isEmpty()) {
+                return $this->sendResponse(
+                    [
+                        'updated_count' => 0,
+                        'message' => 'Todos os eventos já possuem slug'
+                    ],
+                    'Nenhum evento para atualizar'
+                );
+            }
+
+            $updatedCount = 0;
+            $errors = [];
+
+            foreach ($eventsWithoutSlug as $event) {
+                try {
+                    // Gerar slug baseado no nome do evento
+                    $baseSlug = \Illuminate\Support\Str::slug($event->name);
+                    
+                    // Verificar se o slug já existe
+                    $counter = 1;
+                    $slug = $baseSlug;
+                    
+                    while (Event::where('slug', $slug)->where('id', '!=', $event->id)->exists()) {
+                        $slug = $baseSlug . '-' . $counter;
+                        $counter++;
+                    }
+
+                    // Atualizar o evento com o novo slug
+                    $event->slug = $slug;
+                    $event->save();
+                    
+                    $updatedCount++;
+
+                } catch (\Exception $e) {
+                    $errors[] = [
+                        'event_id' => $event->id,
+                        'event_name' => $event->name,
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+
+            return $this->sendResponse(
+                [
+                    'updated_count' => $updatedCount,
+                    'total_found' => $eventsWithoutSlug->count(),
+                    'errors' => $errors,
+                    'success_rate' => $eventsWithoutSlug->count() > 0 ? 
+                        round(($updatedCount / $eventsWithoutSlug->count()) * 100, 2) : 100
+                ],
+                "Slugs gerados com sucesso. {$updatedCount} eventos atualizados."
+            );
+
+        } catch (\Exception $e) {
+            return $this->sendError('Erro ao gerar slugs', ['error' => $e->getMessage()], 500);
+        }
+    }
         
     
 }
