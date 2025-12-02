@@ -314,7 +314,12 @@ class UserCheckOutController extends Controller
     public function show(string $id)
     {
         //
-        $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')->find($id);
+        // $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')->find($id);
+
+        $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')
+                     ->where('slug', $id)
+                     ->orWhere('id', $id)
+                     ->first();
         $ticket = Ticket::where('event_id', $event->id)->get();
 
         $ticket->transform(function ($item){
