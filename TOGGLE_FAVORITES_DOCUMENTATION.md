@@ -1,6 +1,6 @@
 # 🎯 Funcionalidade Toggle de Favoritos - MTicket
 
-## 📋 Implementação Completa
+## 📋 Implementação Completa..
 
 A funcionalidade de toggle de favoritos foi implementada com sucesso! Agora os usuários podem facilmente favoritar/desfavoritar eventos tocando no ícone de coração.
 
