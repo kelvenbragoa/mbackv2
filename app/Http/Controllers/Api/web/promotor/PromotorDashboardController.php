@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\web\promotor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\AuthorizesEventAccess;
 use App\Models\Barman;
 use App\Models\BarStore;
 use App\Models\CustomerInvite;
@@ -17,39 +18,51 @@ use App\Models\Ticket;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class PromotorDashboardController extends Controller
 {
+    use AuthorizesEventAccess;
+
+    private const ALLOWED_RANGES = [7, 30, 90, 365];
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-        if(Auth::user()->role_id == 1){
-            $events = Event::count();
-            $eventspending = Event::where('status_id',3)->count();
-            $eventscanceled = Event::where('status_id',1)->count();
-            $eventsapproved = Event::where('status_id',2)->count();
-            $eventsreview = Event::where('status_id',4)->count();
-        }else{
-            $events = Event::where('user_id',Auth::user()->id)->count();
-            $eventspending = Event::where('user_id',Auth::user()->id)->where('status_id',3)->count();
-            $eventscanceled = Event::where('user_id',Auth::user()->id)->where('status_id',1)->count();
-            $eventsapproved = Event::where('user_id',Auth::user()->id)->where('status_id',2)->count();
-            $eventsreview = Event::where('user_id',Auth::user()->id)->where('status_id',4)->count();
+        $days = (int) $request->query('range', 30);
+        if (!in_array($days, self::ALLOWED_RANGES, true)) {
+            $days = 30;
         }
-        
+
+        $end = Carbon::now()->endOfDay();
+        $start = Carbon::now()->subDays($days - 1)->startOfDay();
+        $previousEnd = (clone $start)->subSecond();
+        $previousStart = (clone $start)->subDays($days);
+        $eventIds = $this->eventIds();
 
         return response()->json([
-            "events" => $events,
-            "eventsapproved"=>$eventsapproved,
-            "eventspending"=>$eventspending,
-            "eventscanceled"=>$eventscanceled,
-            "eventsreview"=>$eventsreview,
-
+            'range' => $days,
+            'period' => [
+                'start' => $start->toDateString(),
+                'end' => $end->toDateString(),
+            ],
+            'kpis' => $this->kpis($eventIds, $start, $end, $previousStart, $previousEnd),
+            'totals' => $this->totals($eventIds),
+            'chart' => $this->chart($eventIds, $start, $end),
+            'events_by_status' => $this->eventsByStatus($eventIds),
+            'top_events' => $this->topEvents($eventIds, $start, $end),
+            'recent_sells' => $this->recentSells($eventIds),
+            'upcoming_events' => $this->upcomingEvents($eventIds),
+            // Compatibilidade com a resposta antiga
+            'events' => count($eventIds),
+            'eventsapproved' => Event::whereIn('id', $eventIds)->where('status_id', 2)->count(),
+            'eventspending' => Event::whereIn('id', $eventIds)->where('status_id', 3)->count(),
+            'eventscanceled' => Event::whereIn('id', $eventIds)->where('status_id', 1)->count(),
+            'eventsreview' => Event::whereIn('id', $eventIds)->where('status_id', 4)->count(),
         ]);
     }
 
@@ -75,6 +88,10 @@ class PromotorDashboardController extends Controller
     public function show(string $id)
     {
         //
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
         $event = Event::with('tickets.sells')->with('invites.customers')->with('barstores.sells')->with('products.sells')->with('products.barstore')->find($id);
         $tickets = Ticket::where('event_id',$id)->where('is_package',0)->orderBy('id','desc')->count();
         $packages = Ticket::where('event_id',$id)->where('is_package',1)->orderBy('id','desc')->count();
@@ -126,6 +143,9 @@ class PromotorDashboardController extends Controller
 
 
     public function bilhetes($id){
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
 
         $tickets = Ticket::where('event_id',$id)->where('is_package',0)->orderBy('id','desc')->get();
         $ticket_issued = Sell::where('event_id',$id)->with('ticket')->with('user')->orderBy('id','desc')->get();
@@ -204,6 +224,9 @@ class PromotorDashboardController extends Controller
     }
 
     public function pacotes($id){
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
 
         $tickets = Ticket::where('event_id',$id)->where('is_package',1)->orderBy('id','desc')->get();
         $ticket_issued = Sell::where('event_id',$id)->with('ticket')->with('user')->orderBy('id','desc')->get();
@@ -282,6 +305,9 @@ class PromotorDashboardController extends Controller
     }
 
     public function convites($id){
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
 
         $invites = Invite::where('event_id',$id)->orderBy('id','desc')->get();
         $invites_issued = CustomerInvite::where('event_id',$id)->with('invite')->orderBy('id','desc')->get();
@@ -296,6 +322,9 @@ class PromotorDashboardController extends Controller
     }
 
     public function lineups($id){
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
 
         $lineups = LineUp::where('event_id',$id)->orderBy('id','desc')->get();
         return response()->json([
@@ -314,6 +343,9 @@ class PromotorDashboardController extends Controller
 
 
     public function bar_report($event_id){
+        if ($denied = $this->denyEventAccess($event_id)) {
+            return $denied;
+        }
 
         $event = Event::find($event_id);
         $investment = 0;
@@ -337,6 +369,9 @@ class PromotorDashboardController extends Controller
 
 
     public function ticket_report($event_id){
+        if ($denied = $this->denyEventAccess($event_id)) {
+            return $denied;
+        }
 
         $event = Event::find($event_id);
         $sells = SellDetails::where('event_id', $event)->get();
@@ -414,6 +449,15 @@ class PromotorDashboardController extends Controller
     public function bar_store_report($id){
 
         $barstore = BarStore::find($id);
+
+        if (!$barstore) {
+            return response()->json(['message' => 'Bar não encontrado.'], 404);
+        }
+
+        if ($denied = $this->denyEventAccess($barstore->event_id)) {
+            return $denied;
+        }
+
         $event = Event::find($barstore->event_id);
         $barmans = Barman::where('bar_store_id',$id)->get();
         
@@ -428,6 +472,234 @@ class PromotorDashboardController extends Controller
             'isRemoteEnabled' => 'true'
         ]);
         return $pdf->setPaper('a4')->stream('barstore.pdf');
+    }
+
+    private function eventIds(): array
+    {
+        if (Auth::user()->role_id == 1) {
+            return Event::orderByDesc('id')->pluck('id')->all();
+        }
+
+        return Event::where('user_id', Auth::user()->id)->orderByDesc('id')->pluck('id')->all();
+    }
+
+    private function kpis(array $eventIds, Carbon $start, Carbon $end, Carbon $previousStart, Carbon $previousEnd): array
+    {
+        $revenue = $this->paidSells($eventIds, $start, $end)->sum('total');
+        $previousRevenue = $this->paidSells($eventIds, $previousStart, $previousEnd)->sum('total');
+
+        $tickets = $this->ticketDetails($eventIds)->whereBetween('created_at', [$start, $end])->count();
+        $previousTickets = $this->ticketDetails($eventIds)->whereBetween('created_at', [$previousStart, $previousEnd])->count();
+
+        $orders = $this->paidSells($eventIds, $start, $end)->count();
+        $previousOrders = $this->paidSells($eventIds, $previousStart, $previousEnd)->count();
+
+        $activeEvents = Event::whereIn('id', $eventIds)
+            ->where('status_id', 2)
+            ->whereDate('end_date', '>=', Carbon::today())
+            ->count();
+        $previousActiveEvents = Event::whereIn('id', $eventIds)
+            ->where('status_id', 2)
+            ->whereDate('end_date', '>=', $previousStart->toDateString())
+            ->whereDate('start_date', '<=', $previousEnd->toDateString())
+            ->count();
+
+        return [
+            'revenue' => $this->metric($revenue, $previousRevenue),
+            'tickets' => $this->metric($tickets, $previousTickets),
+            'orders' => $this->metric($orders, $previousOrders),
+            'active_events' => $this->metric($activeEvents, $previousActiveEvents),
+        ];
+    }
+
+    private function totals(array $eventIds): array
+    {
+        return [
+            'events' => count($eventIds),
+            'events_approved' => Event::whereIn('id', $eventIds)->where('status_id', 2)->count(),
+            'events_pending' => Event::whereIn('id', $eventIds)->where('status_id', 3)->count(),
+            'events_canceled' => Event::whereIn('id', $eventIds)->where('status_id', 1)->count(),
+            'events_review' => Event::whereIn('id', $eventIds)->where('status_id', 4)->count(),
+            'revenue' => (float) Sell::where('status', 1)->whereIn('event_id', $eventIds)->sum('total'),
+            'tickets' => SellDetails::whereIn('event_id', $eventIds)->count(),
+            'upcoming' => Event::whereIn('id', $eventIds)
+                ->where('status_id', 2)
+                ->whereDate('start_date', '>=', Carbon::today())
+                ->count(),
+        ];
+    }
+
+    private function chart(array $eventIds, Carbon $start, Carbon $end): array
+    {
+        $revenueByDay = $this->paidSells($eventIds, $start, $end)
+            ->select(DB::raw('DATE(created_at) as day'), DB::raw('SUM(total) as total'))
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $ticketsByDay = $this->ticketDetails($eventIds)
+            ->whereBetween('created_at', [$start, $end])
+            ->select(DB::raw('DATE(created_at) as day'), DB::raw('COUNT(*) as total'))
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $labels = [];
+        $revenue = [];
+        $tickets = [];
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            $key = $date->toDateString();
+            $labels[] = $date->format('d/m');
+            $revenue[] = round((float) ($revenueByDay[$key] ?? 0), 2);
+            $tickets[] = (int) ($ticketsByDay[$key] ?? 0);
+        }
+
+        return [
+            'labels' => $labels,
+            'revenue' => $revenue,
+            'tickets' => $tickets,
+        ];
+    }
+
+    private function eventsByStatus(array $eventIds): array
+    {
+        $labels = [
+            2 => 'Aprovados',
+            3 => 'Pendentes',
+            4 => 'Em revisão',
+            1 => 'Cancelados',
+        ];
+
+        $counts = Event::whereIn('id', $eventIds)
+            ->select('status_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('status_id')
+            ->pluck('total', 'status_id');
+
+        $result = [];
+        foreach ($labels as $statusId => $label) {
+            $result[] = [
+                'status_id' => $statusId,
+                'label' => $label,
+                'total' => (int) ($counts[$statusId] ?? 0),
+            ];
+        }
+
+        return $result;
+    }
+
+    private function topEvents(array $eventIds, Carbon $start, Carbon $end): array
+    {
+        if (empty($eventIds)) {
+            return [];
+        }
+
+        $rows = $this->paidSells($eventIds, $start, $end)
+            ->select('event_id', DB::raw('SUM(total) as revenue'), DB::raw('SUM(qty) as tickets'))
+            ->groupBy('event_id')
+            ->orderByDesc('revenue')
+            ->limit(5)
+            ->get();
+
+        $events = Event::whereIn('id', $rows->pluck('event_id'))
+            ->get(['id', 'name', 'image', 'status_id', 'start_date'])
+            ->keyBy('id');
+
+        return $rows->map(function ($row) use ($events) {
+            $event = $events->get($row->event_id);
+
+            return [
+                'event_id' => (int) $row->event_id,
+                'name' => $event->name ?? 'Evento removido',
+                'image' => $event->image ?? null,
+                'status_id' => $event->status_id ?? null,
+                'start_date' => $event->start_date ?? null,
+                'revenue' => round((float) $row->revenue, 2),
+                'tickets' => (int) $row->tickets,
+            ];
+        })->all();
+    }
+
+    private function recentSells(array $eventIds): array
+    {
+        if (empty($eventIds)) {
+            return [];
+        }
+
+        $sells = Sell::where('status', 1)
+            ->whereIn('event_id', $eventIds)
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get(['id', 'event_id', 'name', 'email', 'mobile', 'qty', 'total', 'created_at']);
+
+        $events = Event::whereIn('id', $sells->pluck('event_id'))->pluck('name', 'id');
+
+        return $sells->map(function ($sell) use ($events) {
+            return [
+                'id' => $sell->id,
+                'name' => $sell->name,
+                'email' => $sell->email,
+                'mobile' => $sell->mobile,
+                'qty' => (int) $sell->qty,
+                'total' => (float) $sell->total,
+                'created_at' => $sell->created_at,
+                'event_id' => $sell->event_id,
+                'event_name' => $events[$sell->event_id] ?? 'Evento removido',
+            ];
+        })->all();
+    }
+
+    private function upcomingEvents(array $eventIds): array
+    {
+        if (empty($eventIds)) {
+            return [];
+        }
+
+        return Event::whereIn('id', $eventIds)
+            ->where('status_id', 2)
+            ->whereDate('start_date', '>=', Carbon::today())
+            ->orderBy('start_date')
+            ->limit(5)
+            ->get(['id', 'name', 'image', 'status_id', 'start_date', 'end_date', 'province_id', 'city_id'])
+            ->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'name' => $event->name,
+                    'image' => $event->image,
+                    'status_id' => $event->status_id,
+                    'start_date' => $event->start_date,
+                    'end_date' => $event->end_date,
+                ];
+            })
+            ->all();
+    }
+
+    private function paidSells(array $eventIds, Carbon $start, Carbon $end)
+    {
+        return Sell::where('status', 1)
+            ->whereIn('event_id', $eventIds ?: [0])
+            ->whereBetween('created_at', [$start, $end]);
+    }
+
+    private function ticketDetails(array $eventIds)
+    {
+        return SellDetails::whereIn('event_id', $eventIds ?: [0]);
+    }
+
+    private function metric($current, $previous): array
+    {
+        $current = (float) $current;
+        $previous = (float) $previous;
+
+        if ($previous > 0) {
+            $change = round((($current - $previous) / $previous) * 100, 1);
+        } else {
+            $change = $current > 0 ? null : 0.0;
+        }
+
+        return [
+            'value' => $current,
+            'previous' => $previous,
+            'change' => $change,
+        ];
     }
 
 }

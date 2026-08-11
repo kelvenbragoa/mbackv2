@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\web\promotor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\AuthorizesEventAccess;
+use App\Http\Traits\PaginatesRequests;
 use App\Models\Barman;
 use App\Models\BarStore;
 use App\Models\Category;
@@ -18,23 +20,50 @@ use App\Models\Ticket;
 use App\Models\TypeEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PromotorEventsController extends Controller
 {
+    use AuthorizesEventAccess, PaginatesRequests;
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-        if(Auth::user()->role_id == 1){
-            $events = Event::with('city')->with('province')->with('category')->with('status')->with('type')->orderBy('id','desc')->paginate(50);
+        $baseQuery = Event::query();
 
-        }else{
-            $events = Event::where('user_id',Auth::user()->id)->with('city')->with('province')->with('category')->with('status')->with('type')->orderBy('id','desc')->paginate(50);
+        if (Auth::user()->role_id != 1) {
+            $baseQuery->where('user_id', Auth::user()->id);
         }
+
+        $events = (clone $baseQuery)
+            ->when($request->query('query'), function ($builder, $search) {
+                $builder->where(function ($inner) use ($search) {
+                    $inner->where('name', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->query('status_id'), function ($builder, $statusId) {
+                $builder->where('status_id', $statusId);
+            })
+            ->when($request->query('province_id'), function ($builder, $provinceId) {
+                $builder->where('province_id', $provinceId);
+            })
+            ->with(['city', 'province', 'category', 'status', 'type'])
+            ->withCount('sell_details as tickets_sold')
+            ->withSum(['sells as revenue' => function ($query) {
+                $query->where('status', 1);
+            }], 'total')
+            ->orderByDesc('id')
+            ->paginate($this->perPageTable($request))
+            ->appends($request->query());
+
         return response()->json([
-            "event" => $events
+            'event' => $events,
+            'provinces' => Province::orderBy('name')->get(['id', 'name']),
+            'statuses' => Status::orderBy('id')->get(['id', 'name']),
+            'summary' => $this->summary($baseQuery),
         ]);
     }
 
@@ -65,16 +94,17 @@ class PromotorEventsController extends Controller
         //
         $data = $request->all();
 
-        $data = $request->all();
-        if($request->has('image')){
-            $imageName = time().'.'.$request->image->extension();
-            $request->file('image')->storeAs('public/event',$imageName);
+        $imagePath = '';
+        if ($request->hasFile('image')) {
+            $imageName = time().'.'.$request->file('image')->extension();
+            $request->file('image')->storeAs('public/event', $imageName);
+            $imagePath = 'event/'.$imageName;
         }
 
         $event = Event::create([
             'user_id'=> Auth::user()->id,
             'name' => $data['name'],
-            'image' => 'event/'.$imageName,
+            'image' => $imagePath,
             'province_id' => $data['province_id'],
             'city_id' => $data['city_id'],
             'description' => $data['description'],
@@ -105,7 +135,12 @@ class PromotorEventsController extends Controller
     public function show(string $id)
     {
         //
-        $event = Event::with('city')->with('province')->with('category')->with('status')->with('type')->find($id);
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
+        $event = Event::with('city')->with('province')->with('category')->with('status')->with('type')
+            ->with('user:id,name,email,mobile')->find($id);
         $province = Province::get();
         $city = City::get();
         $categories = Category::get();
@@ -144,6 +179,10 @@ class PromotorEventsController extends Controller
     public function edit(string $id)
     {
         //
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
         $event = Event::with('city')->with('province')->with('category')->with('status')->with('type')->find($id);
         $province = Province::get();
         $city = City::get();
@@ -166,16 +205,19 @@ class PromotorEventsController extends Controller
     public function update(Request $request, string $id)
     {
         //
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
         $event = Event::find($id);
         $data = $request->all();
 
         $data['start_date'] = date('Y-m-d',strtotime($data['start_date']));
         $data['end_date'] = date('Y-m-d',strtotime($data['end_date']));
 
-        if($request->has('image')){
-            $imageName = time().'.'.$request->image->extension();
-            $request->file('image')->storeAs('public/event',$imageName);
-            // $imageArray = ['image'=> 'event/'.$imageName, ];
+        if ($request->hasFile('image')) {
+            $imageName = time().'.'.$request->file('image')->extension();
+            $request->file('image')->storeAs('public/event', $imageName);
             $data['image'] = 'event/'.$imageName;
         }
 
@@ -189,13 +231,53 @@ class PromotorEventsController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
+        $event = Event::find($id);
+
+        if (!$event) {
+            return response()->json(['message' => 'Evento não encontrado.'], 404);
+        }
+
+        if (!in_array((int) $event->status_id, [3, 4], true)) {
+            return response()->json([
+                'message' => 'Só podes eliminar eventos pendentes ou em revisão.',
+            ], 422);
+        }
+
+        $event->delete();
+
+        return response()->json(['message' => 'Evento eliminado.']);
     }
 
-    public function auxiliar($id){
-        $barstore = BarStore::where("event_id", $id)->get();
+    public function auxiliar($id)
+    {
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
+        $barstore = BarStore::where('event_id', $id)->get();
+
         return response()->json([
-            "barstore" => $barstore
+            'barstore' => $barstore,
         ]);
+    }
+
+    private function summary($baseQuery): array
+    {
+        $counts = (clone $baseQuery)
+            ->select('status_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('status_id')
+            ->pluck('total', 'status_id');
+
+        return [
+            'total' => (int) $counts->sum(),
+            'approved' => (int) ($counts[2] ?? 0),
+            'pending' => (int) ($counts[3] ?? 0),
+            'review' => (int) ($counts[4] ?? 0),
+            'canceled' => (int) ($counts[1] ?? 0),
+        ];
     }
 }

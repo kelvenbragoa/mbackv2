@@ -57,18 +57,25 @@ class UserCashlessController extends Controller
      */
     public function show(string $id)
     {
-        //
         $card = EventCard::find($id);
-        if($card->status == 0){
+
+        if (!$card) {
             return response()->json([
-                "message" => "Pulseira desativada, por favor contacte a mticket",
+                'message' => 'Pulseira nao encontrada',
             ], 404);
         }
-        $transactions = CardTransaction::where('card_id',$id)->orderby('id','desc')->get();
+
+        if ($card->status == 0) {
+            return response()->json([
+                'message' => 'Pulseira desativada, por favor contacte a mticket',
+            ], 404);
+        }
+
+        $transactions = CardTransaction::where('card_id', $id)->orderBy('id', 'desc')->get();
 
         return response()->json([
-            'card'=>$card,
-            'transactions'=>$transactions,
+            'card' => $card,
+            'transactions' => $transactions,
         ]);
     }
 

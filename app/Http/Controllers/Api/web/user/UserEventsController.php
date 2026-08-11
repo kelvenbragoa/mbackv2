@@ -3,17 +3,49 @@
 namespace App\Http\Controllers\Api\web\user;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\PaginatesRequests;
+use App\Models\Category;
 use App\Models\Event;
+use App\Models\Province;
 use Illuminate\Http\Request;
 
 class UserEventsController extends Controller
 {
+    use PaginatesRequests;
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $provinces = Province::orderBy('name', 'asc')->get();
+        $categories = Category::orderBy('name', 'asc')->get();
+
+        $events = Event::with(['user', 'province', 'city', 'type'])
+            ->withMin('tickets', 'price')
+            ->where('status_id', 2)
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->query('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->filled('province_id'), function ($query) use ($request) {
+                $query->where('province_id', $request->query('province_id'));
+            })
+            ->when($request->filled('category_id'), function ($query) use ($request) {
+                $query->where('main_category_id', $request->query('category_id'));
+            })
+            ->orderBy('end_date', 'desc')
+            ->paginate($this->perPage($request))
+            ->appends($request->query());
+
+        return response()->json([
+            'provinces' => $provinces,
+            'categories' => $categories,
+            'events' => $events,
+        ]);
     }
 
     /**
@@ -37,25 +69,29 @@ class UserEventsController extends Controller
      */
     public function show(string $id)
     {
-        //
-        // Procurar por slug primeiro, depois por ID se não encontrar
-        $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')
-                     ->where('slug', $id)
-                     ->orWhere('id', $id)
-                     ->first();
-        
-        // Se não encontrar o evento, retornar erro
+        $event = Event::with(['user', 'province', 'city', 'tickets', 'like', 'lineups', 'type', 'category'])
+            ->where(function ($query) use ($id) {
+                $query->where('slug', $id)->orWhere('id', $id);
+            })
+            ->first();
+
         if (!$event) {
             return response()->json([
-                "error" => "Evento não encontrado"
+                'error' => 'Evento não encontrado'
             ], 404);
         }
-        
-        $event_recomended = Event::where('status_id',2)->inRandomOrder()->limit(4)->get();
+
+        $recommended = Event::with(['user', 'province', 'city', 'type'])
+            ->withMin('tickets', 'price')
+            ->where('status_id', 2)
+            ->where('id', '!=', $event->id)
+            ->inRandomOrder()
+            ->limit(4)
+            ->get();
 
         return response()->json([
-            "events"=>$event,
-            "recommended"=>$event_recomended
+            'events' => $event,
+            'recommended' => $recommended,
         ]);
     }
 

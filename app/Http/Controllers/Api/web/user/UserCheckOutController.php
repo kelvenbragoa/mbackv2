@@ -313,23 +313,29 @@ class UserCheckOutController extends Controller
      */
     public function show(string $id)
     {
-        //
-        // $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')->find($id);
+        $event = Event::with(['user', 'province', 'city', 'tickets', 'like', 'lineups', 'type'])
+            ->where(function ($query) use ($id) {
+                $query->where('slug', $id)->orWhere('id', $id);
+            })
+            ->first();
 
-        $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')
-                     ->where('slug', $id)
-                     ->orWhere('id', $id)
-                     ->first();
-        $ticket = Ticket::where('event_id', $event->id)->get();
+        if (!$event) {
+            return response()->json([
+                'error' => 'Evento não encontrado'
+            ], 404);
+        }
 
-        $ticket->transform(function ($item){
-            $item->quantity = 0;
-              return $item;
-        });
+        $tickets = Ticket::where('event_id', $event->id)
+            ->where('is_package', 0)
+            ->get()
+            ->transform(function ($item) {
+                $item->quantity = 0;
+                return $item;
+            });
 
         return response()->json([
-            "events"=>$event,
-            "tickets"=>$ticket,
+            'events' => $event,
+            'tickets' => $tickets,
         ]);
     }
 

@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\mobile\client\ClientAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserAuthController;
+use App\Http\Controllers\Api\web\admin\AdminDashboardController;
+use App\Http\Controllers\Api\web\admin\AdminEventsController;
 use App\Http\Controllers\Api\web\admin\AdminTicketsController;
 use App\Http\Controllers\Api\web\admin\AdminTransactionController;
 use App\Http\Controllers\Api\web\NotficationController;
@@ -23,6 +25,7 @@ use App\Http\Controllers\Api\web\user\UserCashlessController;
 use App\Http\Controllers\Api\web\user\UserCategoriesController;
 use App\Http\Controllers\Api\web\user\UserCheckOutController;
 use App\Http\Controllers\Api\web\user\UserEventsController;
+use App\Http\Controllers\Api\web\user\UserTicketsController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
 use App\Http\Controllers\GlobalController;
 use App\Http\Middleware\Sanctum;
@@ -33,7 +36,7 @@ use App\Http\Middleware\Sanctum;
 
 Route::post('register', [UserAuthController::class, 'register']);
 Route::post('login', [UserAuthController::class, 'login']);
-Route::post('updatepassword', [UserAuthController::class, 'login']);
+Route::post('updatepassword', [UserAuthController::class, 'updatepassword'])->middleware(Sanctum::class);
 Route::post('logout', [UserAuthController::class, 'logout'])->middleware(Sanctum::class);;
 // ->middleware('auth:sanctum');
 
@@ -50,6 +53,9 @@ Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
 
 
 Route::middleware([Sanctum::class])->group(function () {
+    Route::get('meus-bilhetes', [UserTicketsController::class, 'index']);
+    Route::get('meus-bilhetes/{id}', [UserTicketsController::class, 'show']);
+
     Route::get('auxiliar-event/{id}', [PromotorEventsController::class, 'auxiliar']);
     Route::get('promotor-bar/{id}/copy', [PromotorBarController::class, 'copy']);
     Route::resource('promotor-eventos', PromotorEventsController::class);
@@ -68,8 +74,14 @@ Route::middleware([Sanctum::class])->group(function () {
     Route::post('promotor-customers-bulk', [PromotorCustomerInviteController::class, 'storebulk']);
 
 
-    Route::resource('admin-transacoes', AdminTransactionController::class);
-    Route::resource('admin-tickets', AdminTicketsController::class);
+    Route::get('admin-dashboard', [AdminDashboardController::class, 'index']);
+    Route::get('admin-eventos', [AdminEventsController::class, 'index']);
+    Route::patch('admin-eventos/{id}/status', [AdminEventsController::class, 'updateStatus']);
+    Route::get('admin-transacoes', [AdminTransactionController::class, 'index']);
+    Route::get('admin-transacoes/{id}', [AdminTransactionController::class, 'show']);
+    Route::post('admin-transacoes/{id}/confirmar', [AdminTransactionController::class, 'confirm']);
+    Route::get('admin-tickets', [AdminTicketsController::class, 'index']);
+    Route::get('admin-tickets/{id}', [AdminTicketsController::class, 'show']);
 
     Route::get('promotor-dashboard/{id}/bilhetes', [PromotorDashboardController::class, 'bilhetes']);
     Route::get('promotor-dashboard/{id}/pacotes', [PromotorDashboardController::class, 'pacotes']);
