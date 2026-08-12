@@ -28,7 +28,7 @@ use App\Http\Controllers\Api\web\user\UserEventsController;
 use App\Http\Controllers\Api\web\user\UserTicketsController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
 use App\Http\Controllers\GlobalController;
-use App\Http\Middleware\Sanctum;
+// use App\Http\Middleware\Sanctum;
 
 // Route::get('/user', function (Request $request) {
 //     return $request->user();
@@ -36,8 +36,9 @@ use App\Http\Middleware\Sanctum;
 
 Route::post('register', [UserAuthController::class, 'register']);
 Route::post('login', [UserAuthController::class, 'login']);
-Route::post('updatepassword', [UserAuthController::class, 'updatepassword'])->middleware(Sanctum::class);
-Route::post('logout', [UserAuthController::class, 'logout'])->middleware(Sanctum::class);;
+Route::post('updatepassword', [UserAuthController::class, 'updatepassword'])->middleware('auth:sanctum');
+Route::post('logout', [UserAuthController::class, 'logout'])->middleware('auth:sanctum');
+//->middleware(Sanctum::class);;
 // ->middleware('auth:sanctum');
 
 Route::resource('homepage', WelcomePageController::class);
@@ -52,7 +53,7 @@ Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
 
 
 
-Route::middleware([Sanctum::class])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('meus-bilhetes', [UserTicketsController::class, 'index']);
     Route::get('meus-bilhetes/{id}', [UserTicketsController::class, 'show']);
 
