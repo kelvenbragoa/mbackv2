@@ -38,12 +38,20 @@ class PromotorProductsController extends Controller
      */
     public function store(Request $request)
     {
-        //
-        $data = $request->all();
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'buy_price' => ['required', 'numeric', 'min:0'],
+            'sell_price' => ['required', 'numeric', 'min:0'],
+            'event_id' => ['required', 'integer'],
+            'bar_store_id' => ['required', 'integer'],
+        ]);
+
+        // Stock starts at 0; use stock notes (entrada) to add quantity.
+        $data['qtd'] = 0;
 
         $product = Products::create($data);
 
-        return response()->json($product);
+        return response()->json($product, 201);
     }
 
     /**
@@ -79,10 +87,22 @@ class PromotorProductsController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
-        $data = $request->all();
         $produto = Products::find($id);
+        if (! $produto) {
+            return response()->json(['message' => 'Produto não encontrado.'], 404);
+        }
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'buy_price' => ['sometimes', 'required', 'numeric', 'min:0'],
+            'sell_price' => ['sometimes', 'required', 'numeric', 'min:0'],
+            'bar_store_id' => ['sometimes', 'required', 'integer'],
+            'event_id' => ['sometimes', 'required', 'integer'],
+        ]);
+
+        // Intentionally ignore qtd — stock changes only via stock notes.
         $produto->update($data);
+
         return response()->json($produto);
     }
 

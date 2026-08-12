@@ -18,4 +18,13 @@ class Products extends Model
         return $this->hasOne('App\Models\BarStore', 'id', 'bar_store_id');
     }
 
+    public function stockMovements()
+    {
+        return $this->hasMany(ProductStockMovement::class, 'product_id', 'id');
+    }
+
+    public function stockNoteItems()
+    {
+        return $this->hasMany(StockNoteItem::class, 'product_id', 'id');
+    }
 }

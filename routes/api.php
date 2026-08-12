@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\web\admin\AdminDashboardController;
 use App\Http\Controllers\Api\web\admin\AdminEventsController;
 use App\Http\Controllers\Api\web\admin\AdminTicketsController;
 use App\Http\Controllers\Api\web\admin\AdminTransactionController;
+use App\Http\Controllers\Api\web\admin\AdminUsersController;
 use App\Http\Controllers\Api\web\NotficationController;
 use App\Http\Controllers\Api\web\promotor\PromotorBarController;
 use App\Http\Controllers\Api\web\promotor\PromotorBarmanController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\web\promotor\PromotorPackageController;
 use App\Http\Controllers\Api\web\promotor\PromotorProductsController;
 use App\Http\Controllers\Api\web\promotor\PromotorProfileController;
 use App\Http\Controllers\Api\web\promotor\PromotorProtocoloController;
+use App\Http\Controllers\Api\web\promotor\PromotorStockNoteController;
 use App\Http\Controllers\Api\web\promotor\PromotorTicketController;
 use App\Http\Controllers\Api\web\user\UserCashlessController;
 use App\Http\Controllers\Api\web\user\UserCategoriesController;
@@ -75,6 +77,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('promotor-customers', PromotorCustomerInviteController::class);
     Route::resource('promotor-profile', PromotorProfileController::class);
     Route::post('promotor-page', [PromotorProfileController::class, 'updatePage']);
+
+    Route::get('promotor-stock-notes', [PromotorStockNoteController::class, 'index']);
+    Route::get('promotor-stock-notes/create', [PromotorStockNoteController::class, 'create']);
+    Route::post('promotor-stock-notes', [PromotorStockNoteController::class, 'store']);
+    Route::get('promotor-stock-notes/{id}', [PromotorStockNoteController::class, 'show']);
+    Route::get('promotor-product-movements/{productId}', [PromotorStockNoteController::class, 'productMovements']);
     Route::resource('notifications', NotficationController::class);
     Route::post('promotor-customers-bulk', [PromotorCustomerInviteController::class, 'storebulk']);
 
@@ -87,6 +95,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('admin-transacoes/{id}/confirmar', [AdminTransactionController::class, 'confirm']);
     Route::get('admin-tickets', [AdminTicketsController::class, 'index']);
     Route::get('admin-tickets/{id}', [AdminTicketsController::class, 'show']);
+
+    Route::get('admin-users', [AdminUsersController::class, 'index']);
+    Route::get('admin-users/{id}', [AdminUsersController::class, 'show']);
+    Route::post('admin-users/{id}', [AdminUsersController::class, 'update']);
+    Route::post('admin-users/{id}/reset-password', [AdminUsersController::class, 'resetPassword']);
+    Route::post('admin-users/{id}/page', [AdminUsersController::class, 'updatePage']);
 
     Route::get('promotor-dashboard/{id}/bilhetes', [PromotorDashboardController::class, 'bilhetes']);
     Route::get('promotor-dashboard/{id}/pacotes', [PromotorDashboardController::class, 'pacotes']);
