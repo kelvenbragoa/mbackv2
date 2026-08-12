@@ -12,6 +12,27 @@ use Illuminate\Validation\Rule;
 
 class PromotorProfileController extends Controller
 {
+    private const RESERVED_SLUGS = [
+        'www',
+        'backend',
+        'api',
+        'admin',
+        'app',
+        'mail',
+        'cdn',
+        'static',
+        'promotores',
+        'p',
+        'ftp',
+        'smtp',
+        'ns1',
+        'ns2',
+        'webmail',
+        'cpanel',
+        'autoconfig',
+        'autodiscover',
+    ];
+
     /**
      * Display the authenticated promoter profile.
      */
@@ -48,12 +69,14 @@ class PromotorProfileController extends Controller
                 'max:80',
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
                 Rule::unique('users', 'slug')->ignore($user->id),
+                Rule::notIn(self::RESERVED_SLUGS),
             ],
             'image' => ['nullable', 'image', 'max:5120'],
             'banner' => ['nullable', 'image', 'max:8192'],
         ], [
             'slug.regex' => 'O slug só pode ter letras minúsculas, números e hífens.',
             'slug.unique' => 'Este slug já está em uso.',
+            'slug.not_in' => 'Este slug está reservado. Escolhe outro.',
         ]);
 
         if ($validator->fails()) {
@@ -79,9 +102,15 @@ class PromotorProfileController extends Controller
             $user->slug = $data['slug'];
         } elseif (empty($user->slug)) {
             $base = Str::slug($user->company_name ?: $user->name) ?: 'promotor-'.$user->id;
+            if (in_array($base, self::RESERVED_SLUGS, true)) {
+                $base = 'promotor-'.$user->id;
+            }
             $slug = $base;
             $counter = 1;
-            while (User::where('slug', $slug)->where('id', '!=', $user->id)->exists()) {
+            while (
+                User::where('slug', $slug)->where('id', '!=', $user->id)->exists()
+                || in_array($slug, self::RESERVED_SLUGS, true)
+            ) {
                 $slug = $base.'-'.$counter;
                 $counter++;
             }
