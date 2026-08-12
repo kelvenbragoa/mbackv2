@@ -7,11 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Sluggable\HasSlug;
+use Spatie\Sluggable\SlugOptions;
 
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens, HasSlug;
 
     /**
      * The attributes that are mass assignable.
@@ -34,6 +36,8 @@ class User extends Authenticatable
         'description',
         'company_name',
         'company_location',
+        'slug',
+        'banner',
     ];
 
     /**
@@ -59,6 +63,17 @@ class User extends Authenticatable
         ];
     }
 
+    public function getSlugOptions(): SlugOptions
+    {
+        return SlugOptions::create()
+            ->generateSlugsFrom(function (User $model) {
+                return $model->company_name ?: $model->name;
+            })
+            ->saveSlugsTo('slug')
+            ->doNotGenerateSlugsOnUpdate()
+            ->skipGenerateWhen(fn () => ! $this->is_promotor);
+    }
+
     public function role(){
         return $this->hasOne('App\Models\Role', 'id', 'role_id');
     }
@@ -72,6 +87,11 @@ class User extends Authenticatable
         return $this->hasOne('App\Models\Gender', 'id', 'gender_id');
     }
 
+    public function events()
+    {
+        return $this->hasMany(Event::class, 'user_id', 'id');
+    }
+
     public function toApiArray()
     {
         return [
@@ -82,6 +102,20 @@ class User extends Authenticatable
             'email_verified_at' => $this->email_verified_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+        ];
+    }
+
+    public function toPublicPageArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'company_name' => $this->company_name,
+            'company_location' => $this->company_location,
+            'description' => $this->description,
+            'slug' => $this->slug,
+            'image' => $this->image,
+            'banner' => $this->banner,
         ];
     }
 }

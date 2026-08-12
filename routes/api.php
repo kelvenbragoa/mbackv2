@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\web\user\UserCashlessController;
 use App\Http\Controllers\Api\web\user\UserCategoriesController;
 use App\Http\Controllers\Api\web\user\UserCheckOutController;
 use App\Http\Controllers\Api\web\user\UserEventsController;
+use App\Http\Controllers\Api\web\user\UserPromotorPageController;
 use App\Http\Controllers\Api\web\user\UserTicketsController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
 use App\Http\Controllers\GlobalController;
@@ -47,6 +48,8 @@ Route::resource('checkout', UserCheckOutController::class);
 Route::resource('categories', UserCategoriesController::class);
 Route::resource('cashless', UserCashlessController::class);
 Route::post('cashless-recharge', [UserCashlessController::class, 'recharge']);
+Route::get('promotores', [UserPromotorPageController::class, 'index']);
+Route::get('promotores/{slug}', [UserPromotorPageController::class, 'show']);
 Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
 
 
@@ -71,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('promotor-barman', PromotorBarmanController::class);
     Route::resource('promotor-customers', PromotorCustomerInviteController::class);
     Route::resource('promotor-profile', PromotorProfileController::class);
+    Route::post('promotor-page', [PromotorProfileController::class, 'updatePage']);
     Route::resource('notifications', NotficationController::class);
     Route::post('promotor-customers-bulk', [PromotorCustomerInviteController::class, 'storebulk']);
 
