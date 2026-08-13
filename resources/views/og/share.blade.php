@@ -15,21 +15,28 @@
     <meta property="og:title" content="{{ $title }}">
     <meta property="og:description" content="{{ $description }}">
     <meta property="og:url" content="{{ $url }}">
-    <meta property="og:image" content="{{ $image }}">
-    <meta property="og:image:secure_url" content="{{ $image }}">
+    <meta property="og:image" content="{{ $image['url'] }}">
+    <meta property="og:image:secure_url" content="{{ $image['url'] }}">
     <meta property="og:image:alt" content="{{ $title }}">
+    @if ($image['width'] && $image['height'])
+        <meta property="og:image:type" content="image/jpeg">
+        <meta property="og:image:width" content="{{ $image['width'] }}">
+        <meta property="og:image:height" content="{{ $image['height'] }}">
+    @endif
 
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $title }}">
     <meta name="twitter:description" content="{{ $description }}">
-    <meta name="twitter:image" content="{{ $image }}">
-
-    {{-- Um humano só chega aqui se abrir /og/... à mão: segue para o site. --}}
-    <meta http-equiv="refresh" content="0; url={{ $url }}">
+    <meta name="twitter:image" content="{{ $image['url'] }}">
 </head>
 
 <body>
     <p><a href="{{ $url }}">{{ $title }}</a></p>
+
+    {{-- Redirecionamento em JS, não em meta refresh: os crawlers não executam
+         JavaScript, por isso não registam isto como um salto de redirect. Só um
+         humano que abra /og/... à mão é que segue para o site. --}}
+    <script>window.location.replace(@json($url));</script>
 </body>
 
 </html>

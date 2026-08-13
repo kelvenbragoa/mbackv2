@@ -30,7 +30,7 @@ class OpenGraphController extends Controller
         return $this->render([
             'title' => $event->name.' | '.config('opengraph.site_name'),
             'description' => $this->eventDescription($event),
-            'image' => $this->imageUrl($event->image),
+            'image' => $this->imageTags($event->image),
             'url' => $this->frontendUrl($request, '/eventos/'.($event->slug ?: $slug)),
             'type' => 'article',
         ]);
@@ -59,7 +59,7 @@ class OpenGraphController extends Controller
             'title' => $name.' | '.config('opengraph.site_name'),
             'description' => $this->plainText($promotor->description)
                 ?: trim($name.' na Mticket. '.($promotor->company_location ?: 'Vê os eventos e compra o teu bilhete.')),
-            'image' => $this->imageUrl($promotor->banner ?: $promotor->image),
+            'image' => $this->imageTags($promotor->banner ?: $promotor->image),
             'url' => $url,
             'type' => 'profile',
         ]);
@@ -74,7 +74,15 @@ class OpenGraphController extends Controller
         $disk = Storage::disk('public');
         $path = ltrim(str_replace('\\', '/', $path), '/');
 
-        abort_if(str_contains($path, '..') || ! $disk->exists($path), 404);
+        abort_if(str_contains($path, '..'), 404);
+
+        // O .jpg no fim da URL é só para o ficheiro parecer um JPEG aos olhos
+        // dos crawlers; o original em disco continua a ser .webp, .png, etc.
+        if (! $disk->exists($path) && str_ends_with($path, '.jpg')) {
+            $path = substr($path, 0, -4);
+        }
+
+        abort_if(! $disk->exists($path), 404);
 
         $cached = 'og-cache/'.sha1($path).'.jpg';
 
@@ -155,19 +163,56 @@ class OpenGraphController extends Controller
             : $text;
     }
 
-    private function imageUrl(?string $path): string
+    /**
+     * URL da imagem + dimensões. Sem og:image:width/height o Facebook processa
+     * a imagem de forma assíncrona e as primeiras partilhas saem sem preview.
+     *
+     * @return array{url: string, width: int|null, height: int|null}
+     */
+    private function imageTags(?string $path): array
     {
         $path = trim((string) $path);
 
-        if ($path === '') {
-            return config('opengraph.fallback_image');
+        if ($path === '' || str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return [
+                'url' => $path !== '' ? $path : config('opengraph.fallback_image'),
+                'width' => null,
+                'height' => null,
+            ];
         }
 
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
+        return array_merge(
+            ['url' => rtrim(config('opengraph.base_url'), '/').'/og/imagem/'.ltrim($path, '/').'.jpg'],
+            $this->scaledSize($path),
+        );
+    }
+
+    /**
+     * @return array{width: int|null, height: int|null}
+     */
+    private function scaledSize(string $path): array
+    {
+        $disk = Storage::disk('public');
+
+        if (! $disk->exists($path)) {
+            return ['width' => null, 'height' => null];
         }
 
-        return rtrim(config('opengraph.base_url'), '/').'/og/imagem/'.ltrim($path, '/');
+        $size = @getimagesize($disk->path($path));
+
+        if (! $size) {
+            return ['width' => null, 'height' => null];
+        }
+
+        [$width, $height] = $size;
+        $max = (int) config('opengraph.image_max_width');
+
+        if ($width > $max) {
+            $height = (int) round($height * $max / $width);
+            $width = $max;
+        }
+
+        return ['width' => $width, 'height' => $height];
     }
 
     /**
