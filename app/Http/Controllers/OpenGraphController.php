@@ -69,20 +69,12 @@ class OpenGraphController extends Controller
      * JPEG derivative of a stored image, since crawlers (WhatsApp in
      * particular) ignore the WebP files we serve to browsers.
      */
-    public function image(string $path)
+    public function image(string $token)
     {
         $disk = Storage::disk('public');
-        $path = ltrim(str_replace('\\', '/', $path), '/');
+        $path = ltrim(str_replace('\\', '/', (string) $this->decodePath($token)), '/');
 
-        abort_if(str_contains($path, '..'), 404);
-
-        // O .jpg no fim da URL é só para o ficheiro parecer um JPEG aos olhos
-        // dos crawlers; o original em disco continua a ser .webp, .png, etc.
-        if (! $disk->exists($path) && str_ends_with($path, '.jpg')) {
-            $path = substr($path, 0, -4);
-        }
-
-        abort_if(! $disk->exists($path), 404);
+        abort_if($path === '' || str_contains($path, '..') || ! $disk->exists($path), 404);
 
         $cached = 'og-cache/'.sha1($path).'.jpg';
 
@@ -182,9 +174,24 @@ class OpenGraphController extends Controller
         }
 
         return array_merge(
-            ['url' => rtrim(config('opengraph.base_url'), '/').'/og/imagem/'.ltrim($path, '/').'.jpg'],
+            ['url' => rtrim(config('opengraph.base_url'), '/').'/og/imagem/'.$this->encodePath($path)],
             $this->scaledSize($path),
         );
+    }
+
+    /**
+     * O caminho vai codificado em base64url para a URL não ter pontos: o Nginx
+     * do backend intercepta qualquer pedido terminado em .jpg/.webp/... e
+     * serve-o como ficheiro estático, sem nunca chegar ao PHP.
+     */
+    private function encodePath(string $path): string
+    {
+        return rtrim(strtr(base64_encode(ltrim($path, '/')), '+/', '-_'), '=');
+    }
+
+    private function decodePath(string $token): string
+    {
+        return (string) base64_decode(strtr($token, '-_', '+/'), true);
     }
 
     /**

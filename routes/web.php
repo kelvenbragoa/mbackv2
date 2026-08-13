@@ -12,7 +12,7 @@ Route::get('/', function () {
 // encaminha os crawlers para aqui; utilizadores normais recebem o SPA.
 Route::get('og/eventos/{slug}', [OpenGraphController::class, 'event'])->where('slug', '[A-Za-z0-9._-]+');
 Route::get('og/p/{slug}', [OpenGraphController::class, 'promotor'])->where('slug', '[A-Za-z0-9._-]+');
-Route::get('og/imagem/{path}', [OpenGraphController::class, 'image'])->where('path', '.*');
+Route::get('og/imagem/{token}', [OpenGraphController::class, 'image'])->where('token', '[A-Za-z0-9_-]+');
 
 // Route::get('sendtwilio',[GlobalController::class,'sendtwilio']);
 
