@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\web\promotor\PromotorProfileController;
 use App\Http\Controllers\Api\web\promotor\PromotorProtocoloController;
 use App\Http\Controllers\Api\web\promotor\PromotorStockNoteController;
 use App\Http\Controllers\Api\web\promotor\PromotorTicketController;
+use App\Http\Controllers\Api\web\promotor\PromotorTicketFormFieldController;
 use App\Http\Controllers\Api\web\user\UserCashlessController;
 use App\Http\Controllers\Api\web\user\UserCategoriesController;
 use App\Http\Controllers\Api\web\user\UserCheckOutController;
@@ -66,6 +67,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('promotor-bar/{id}/copy', [PromotorBarController::class, 'copy']);
     Route::resource('promotor-eventos', PromotorEventsController::class);
     Route::resource('promotor-tickets', PromotorTicketController::class);
+    Route::get('promotor-tickets/{ticket}/form-fields', [PromotorTicketFormFieldController::class, 'index']);
+    Route::post('promotor-tickets/{ticket}/form-fields', [PromotorTicketFormFieldController::class, 'store']);
+    Route::put('promotor-tickets/{ticket}/form-fields/{field}', [PromotorTicketFormFieldController::class, 'update']);
+    Route::delete('promotor-tickets/{ticket}/form-fields/{field}', [PromotorTicketFormFieldController::class, 'destroy']);
     Route::resource('promotor-invites', PromotorInviteController::class);
     Route::resource('promotor-packages', PromotorPackageController::class);
     Route::resource('promotor-bar', PromotorBarController::class);
@@ -180,11 +185,14 @@ Route::prefix('client')->group(function () {
         Route::post('/logout', [ClientAuthController::class, 'logout']);
         Route::post('/logout-all', [ClientAuthController::class, 'logoutAll']);
         Route::get('/me', [ClientAuthController::class, 'me']);
+        Route::put('/me', [ClientAuthController::class, 'updateProfile']);
+        Route::patch('/me', [ClientAuthController::class, 'updateProfile']);
 
         // ========== EVENTOS ==========
         Route::prefix('events')->group(function () {
             Route::get('/featured', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'featured']);
             Route::get('/upcoming', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'upcoming']);
+            Route::get('/map', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'map']);
             Route::get('/search', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'search']);
             Route::get('/suggestions', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'suggestions']);
             Route::get('/favorites', [\App\Http\Controllers\Api\Mobile\Client\EventController::class, 'favorites']);
@@ -240,6 +248,7 @@ Route::prefix('client')->group(function () {
     // ========== ROTAS PÚBLICAS (sem autenticação) ==========
     Route::get('/categories', [\App\Http\Controllers\Api\mobile\client\CategoryController::class, 'index']);
     Route::get('/events/featured', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'featured']);
+    Route::get('/events/map', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'map']);
     Route::get('/events/search', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'search']);
     Route::get('/events/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
     Route::get('/search/popular', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'popularSearches']);

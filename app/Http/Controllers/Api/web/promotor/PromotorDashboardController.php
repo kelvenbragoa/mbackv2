@@ -148,7 +148,14 @@ class PromotorDashboardController extends Controller
         }
 
         $tickets = Ticket::where('event_id',$id)->where('is_package',0)->orderBy('id','desc')->get();
-        $ticket_issued = Sell::where('event_id',$id)->with('ticket')->with('user')->orderBy('id','desc')->get();
+        $ticket_issued = Sell::where('event_id', $id)
+            ->with([
+                'ticket.formFields',
+                'user',
+                'selldetails',
+            ])
+            ->orderBy('id', 'desc')
+            ->get();
 
         $allsells_value = Sell::where('event_id',$id)->sum('total');
         $allsells_total = Sell::where('event_id',$id)->sum('qty');
@@ -229,7 +236,14 @@ class PromotorDashboardController extends Controller
         }
 
         $tickets = Ticket::where('event_id',$id)->where('is_package',1)->orderBy('id','desc')->get();
-        $ticket_issued = Sell::where('event_id',$id)->with('ticket')->with('user')->orderBy('id','desc')->get();
+        $ticket_issued = Sell::where('event_id', $id)
+            ->with([
+                'ticket.formFields',
+                'user',
+                'selldetails',
+            ])
+            ->orderBy('id', 'desc')
+            ->get();
 
         $allsells_value = Sell::where('event_id',$id)->sum('total');
         $allsells_total = Sell::where('event_id',$id)->sum('qty');

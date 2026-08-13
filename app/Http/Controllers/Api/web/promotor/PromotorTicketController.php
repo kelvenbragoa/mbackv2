@@ -43,6 +43,9 @@ class PromotorTicketController extends Controller
             'start_time'=>$data['start_time'],
             'end_time'=>$data['end_time'],
             'max_qtd'=>$data['max_qtd'],
+            'max_per_order' => (isset($data['max_per_order']) && $data['max_per_order'] !== '' && $data['max_per_order'] !== null)
+                ? (int) $data['max_per_order']
+                : null,
             'is_package'=>0
 
         ]);
@@ -56,7 +59,7 @@ class PromotorTicketController extends Controller
     public function show(string $id)
     {
         //
-        $ticket = Ticket::find($id);
+        $ticket = Ticket::with('formFields')->find($id);
 
         return response()->json(["ticket"=>$ticket]);
     }
@@ -67,7 +70,7 @@ class PromotorTicketController extends Controller
     public function edit(string $id)
     {
         //
-        $ticket = Ticket::find($id);
+        $ticket = Ticket::with('formFields')->find($id);
         return response()->json(["ticket"=>$ticket]);
     }
 
@@ -82,6 +85,12 @@ class PromotorTicketController extends Controller
 
         $data['start_date'] = date('Y-m-d',strtotime($data['start_date']));
         $data['end_date'] = date('Y-m-d',strtotime($data['end_date']));
+
+        if (array_key_exists('max_per_order', $data)) {
+            $data['max_per_order'] = ($data['max_per_order'] === '' || $data['max_per_order'] === null)
+                ? null
+                : (int) $data['max_per_order'];
+        }
 
         $ticket->update($data);
         return response()->json([

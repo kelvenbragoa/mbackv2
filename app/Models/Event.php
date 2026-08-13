@@ -14,6 +14,19 @@ class Event extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'latitude' => 'float',
+        'longitude' => 'float',
+    ];
+
+    public function hasMapCoordinates(): bool
+    {
+        return $this->latitude !== null
+            && $this->longitude !== null
+            && (float) $this->latitude !== 0.0
+            && (float) $this->longitude !== 0.0;
+    }
+
     public function getSlugOptions() : SlugOptions
     {
         return SlugOptions::create()
@@ -111,5 +124,21 @@ class Event extends Model
     {
         $firstTicket = $this->tickets()->orderBy('price', 'asc')->first();
         return $firstTicket ? (int) $firstTicket->price : 0;
+    }
+
+    /**
+     * Same rule as the web checkout: sales close after the event end_date.
+     */
+    public function isSalesClosed(): bool
+    {
+        if (empty($this->end_date)) {
+            return false;
+        }
+
+        try {
+            return now()->gt(\Carbon\Carbon::parse($this->end_date)->endOfDay());
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

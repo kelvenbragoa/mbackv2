@@ -54,6 +54,8 @@ class UserCheckOutController extends Controller
 
         $event = Event::find($data['tickets'][0]['event_id']);
 
+        $this->assertTicketFormAnswers($data['tickets'] ?? []);
+
 
         $order = [];
         $string = substr(str_shuffle(str_repeat($x='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil(3/strlen($x)) )),1,4);
@@ -100,7 +102,7 @@ class UserCheckOutController extends Controller
                             'email'=>$data['customerEmail'],
                             'mobile'=>$data['customerMobile'],
                             'user_id'=>$data['user_id'] ?? null,
-
+                            'form_answers' => $this->formAnswersForUnit($item, $i),
                         ]);
                     }
                 }
@@ -148,7 +150,7 @@ class UserCheckOutController extends Controller
                                     'email'=>$data['customerEmail'],
                                     'mobile'=>$data['customerMobile'],
                                     'user_id'=>$data['user_id'] ?? null,
-        
+                                    'form_answers' => $this->formAnswersForUnit($item, $i),
                                 ]);
                             }
                             $sell->load('selldetails');
@@ -277,7 +279,7 @@ class UserCheckOutController extends Controller
                         'email'=>$data['customerEmail'],
                         'mobile'=>$data['customerMobile'],
                         'user_id'=>$data['user_id'] ?? null,
-
+                        'form_answers' => $this->formAnswersForUnit($item, $i),
                     ]);
                 }
                 $sell->load('selldetails');
@@ -327,6 +329,9 @@ class UserCheckOutController extends Controller
 
         $tickets = Ticket::where('event_id', $event->id)
             ->where('is_package', 0)
+            ->with(['formFields' => function ($query) {
+                $query->orderBy('sort_order')->orderBy('id');
+            }])
             ->get()
             ->transform(function ($item) {
                 $item->quantity = 0;
@@ -413,5 +418,65 @@ class UserCheckOutController extends Controller
 
         return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
 
+    }
+
+    /**
+     * Validate required form answers for tickets that have configured fields.
+     * Expected payload shape per ticket: answers: [ { field_key: value }, ... ] length = quantity
+     */
+    private function assertTicketFormAnswers(array $tickets): void
+    {
+        foreach ($tickets as $item) {
+            $qty = (int) ($item['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $ticket = Ticket::with('formFields')->find($item['id'] ?? null);
+            if (!$ticket || $ticket->formFields->isEmpty()) {
+                continue;
+            }
+
+            $answersList = $item['answers'] ?? null;
+            if (!is_array($answersList) || count($answersList) < $qty) {
+                abort(422, "Preenche o formulário de \"{$ticket->name}\" para cada bilhete.");
+            }
+
+            for ($i = 0; $i < $qty; $i++) {
+                $unit = $answersList[$i] ?? [];
+                if (!is_array($unit)) {
+                    abort(422, "Respostas inválidas para \"{$ticket->name}\" (participante " . ($i + 1) . ").");
+                }
+
+                foreach ($ticket->formFields as $field) {
+                    if (!$field->required) {
+                        continue;
+                    }
+
+                    $value = $unit[$field->field_key] ?? null;
+                    $missing = false;
+
+                    if (in_array($field->type, ['terms', 'checkbox'], true)) {
+                        $missing = !filter_var($value, FILTER_VALIDATE_BOOLEAN) && $value !== 1 && $value !== '1';
+                    } else {
+                        $missing = $value === null || $value === '';
+                    }
+
+                    if ($missing) {
+                        abort(422, "Campo obrigatório \"{$field->label}\" em \"{$ticket->name}\" (participante " . ($i + 1) . ").");
+                    }
+                }
+            }
+        }
+    }
+
+    private function formAnswersForUnit(array $item, int $index): ?array
+    {
+        $answers = $item['answers'][$index] ?? null;
+        if (!is_array($answers) || $answers === []) {
+            return null;
+        }
+
+        return $answers;
     }
 }

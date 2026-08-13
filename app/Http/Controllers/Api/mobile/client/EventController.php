@@ -99,6 +99,52 @@ class EventController extends BaseController
     }
 
     /**
+     * Get events with map coordinates.
+     */
+    public function map(Request $request): JsonResponse
+    {
+        try {
+            $limit = min((int) $request->get('limit', 200), 300);
+
+            $query = Event::with([
+                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like',
+            ])
+                ->whereIn('status_id', [1, 2, 3])
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->where('latitude', '!=', 0)
+                ->where('longitude', '!=', 0);
+
+            if ($categoryId = $request->get('category_id')) {
+                $query->where('main_category_id', $categoryId);
+            }
+
+            if ($city = $request->get('city')) {
+                $query->whereHas('city', function (Builder $q) use ($city) {
+                    $q->where('name', 'like', "%{$city}%");
+                });
+            }
+
+            if ($cityId = $request->get('city_id')) {
+                $query->where('city_id', $cityId);
+            }
+
+            $events = $query->orderBy('start_date', 'asc')->limit($limit)->get();
+
+            $formattedEvents = $events->map(function ($event) {
+                return $this->formatEvent($event, Auth::id());
+            });
+
+            return $this->sendResponse(
+                ['events' => $formattedEvents->values()],
+                'Eventos do mapa recuperados com sucesso'
+            );
+        } catch (\Exception $e) {
+            return $this->sendError('Erro ao buscar eventos do mapa', [], 500);
+        }
+    }
+
+    /**
      * Search events with filters.
      */
     public function search(Request $request): JsonResponse
@@ -290,7 +336,7 @@ class EventController extends BaseController
     {
         try {
             $event = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'lineups'
+                'category', 'city', 'province', 'tickets.sells', 'tickets.formFields', 'sells', 'review', 'like', 'lineups'
             ])->find($id);
 
             if (!$event) {

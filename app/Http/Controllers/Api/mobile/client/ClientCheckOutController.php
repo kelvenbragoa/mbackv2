@@ -49,6 +49,35 @@ class ClientCheckOutController extends Controller
 
         $event = Event::find($data['tickets'][0]['event_id']);
 
+        if (! $event) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Evento não encontrado',
+            ], 404);
+        }
+
+        if ($event->isSalesClosed()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'As vendas deste evento já terminaram.',
+            ], 422);
+        }
+
+        $saleError = $this->validateTicketsOnSale($data['tickets'] ?? []);
+        if ($saleError !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $saleError,
+            ], 422);
+        }
+
+        $formError = $this->validateTicketFormAnswers($data['tickets'] ?? []);
+        if ($formError !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $formError,
+            ], 422);
+        }
 
         $order = [];
         $string = substr(str_shuffle(str_repeat($x='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil(3/strlen($x)) )),1,4);
@@ -95,7 +124,7 @@ class ClientCheckOutController extends Controller
                             'email'=>$data['customerEmail'],
                             'mobile'=>$data['customerMobile'],
                             'user_id'=>Auth::user()->id ?? null,
-
+                            'form_answers' => $this->formAnswersForUnit($item, $i),
                         ]);
                     }
                 }
@@ -143,7 +172,7 @@ class ClientCheckOutController extends Controller
                                     'email'=>$data['customerEmail'],
                                     'mobile'=>$data['customerMobile'],
                                     'user_id'=>Auth::user()->id ?? null,
-        
+                                    'form_answers' => $this->formAnswersForUnit($item, $i),
                                 ]);
                             }
                             $sell->load('selldetails');
@@ -272,7 +301,7 @@ class ClientCheckOutController extends Controller
                         'email'=>$data['customerEmail'],
                         'mobile'=>$data['customerMobile'],
                         'user_id'=>Auth::user()->id ?? null,
-
+                        'form_answers' => $this->formAnswersForUnit($item, $i),
                     ]);
                 }
                 $sell->load('selldetails');
@@ -397,5 +426,103 @@ class ClientCheckOutController extends Controller
 
         return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
 
+    }
+
+    /**
+     * Reject purchases for tickets outside their sale window or without stock.
+     */
+    private function validateTicketsOnSale(array $tickets): ?string
+    {
+        foreach ($tickets as $item) {
+            $quantity = (int) ($item['quantity'] ?? 0);
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $ticket = Ticket::with('event')->find($item['id'] ?? null);
+            if (! $ticket) {
+                return 'Um dos bilhetes seleccionados não existe.';
+            }
+
+            $status = $ticket->saleStatus(null, $ticket->event);
+            if ($status !== 'available') {
+                return match ($status) {
+                    'event_closed' => 'As vendas deste evento já terminaram.',
+                    'not_started' => "As vendas do bilhete \"{$ticket->name}\" ainda não começaram.",
+                    'expired' => "O período de vendas do bilhete \"{$ticket->name}\" já terminou.",
+                    'sold_out' => "O bilhete \"{$ticket->name}\" está esgotado.",
+                    default => "O bilhete \"{$ticket->name}\" está indisponível.",
+                };
+            }
+
+            $available = $ticket->availableQuantity();
+            if ($quantity > $available) {
+                return "O bilhete \"{$ticket->name}\" não tem quantidade suficiente.";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate required form answers for tickets that have configured fields.
+     * Expected payload: tickets[].answers = [ { field_key: value }, ... ] length = quantity
+     */
+    private function validateTicketFormAnswers(array $tickets): ?string
+    {
+        foreach ($tickets as $item) {
+            $qty = (int) ($item['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $ticket = Ticket::with('formFields')->find($item['id'] ?? null);
+            if (! $ticket || $ticket->formFields->isEmpty()) {
+                continue;
+            }
+
+            $answersList = $item['answers'] ?? null;
+            if (! is_array($answersList) || count($answersList) < $qty) {
+                return "Preenche o formulário de \"{$ticket->name}\" para cada bilhete.";
+            }
+
+            for ($i = 0; $i < $qty; $i++) {
+                $unit = $answersList[$i] ?? [];
+                if (! is_array($unit)) {
+                    return "Respostas inválidas para \"{$ticket->name}\" (participante " . ($i + 1) . ").";
+                }
+
+                foreach ($ticket->formFields as $field) {
+                    if (! $field->required) {
+                        continue;
+                    }
+
+                    $value = $unit[$field->field_key] ?? null;
+                    $missing = false;
+
+                    if (in_array($field->type, ['terms', 'checkbox'], true)) {
+                        $missing = ! filter_var($value, FILTER_VALIDATE_BOOLEAN) && $value !== 1 && $value !== '1';
+                    } else {
+                        $missing = $value === null || $value === '';
+                    }
+
+                    if ($missing) {
+                        return "Campo obrigatório \"{$field->label}\" em \"{$ticket->name}\" (participante " . ($i + 1) . ").";
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function formAnswersForUnit(array $item, int $index): ?array
+    {
+        $answers = $item['answers'][$index] ?? null;
+        if (! is_array($answers) || $answers === []) {
+            return null;
+        }
+
+        return $answers;
     }
 }

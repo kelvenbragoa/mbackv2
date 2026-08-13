@@ -116,6 +116,37 @@ class ClientAuthController extends Controller
     }
 
     /**
+     * Actualizar perfil do cliente.
+     * Email e telemóvel não podem ser alterados por esta rota.
+     */
+    public function updateProfile(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|min:2|max:255',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dados inválidos.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $user->name = trim($request->name);
+        $user->address = $request->filled('address') ? trim($request->address) : null;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Perfil actualizado com sucesso!',
+            'user' => $user->fresh()->toApiArray(),
+        ]);
+    }
+
+    /**
      * Revogar todos os tokens do usuário
      */
     public function logoutAll(Request $request)

@@ -108,6 +108,7 @@ class BaseController extends Controller
 
         return [
             'id' => $event->id,
+            'slug' => $event->slug,
             'title' => $event->name,
             'user' => $event->user->name,
             'description' => $event->description,
@@ -126,22 +127,16 @@ class BaseController extends Controller
                 'address' => $event->address,
                 'city' => $event->city->name ?? null,
                 'state' => $event->province->name ?? null,
-                'latitude' => 0, // Adicionar campos se necessário
-                'longitude' => 0
+                'latitude' => $event->latitude !== null ? (float) $event->latitude : null,
+                'longitude' => $event->longitude !== null ? (float) $event->longitude : null,
             ],
             'date_time' => $event->start_date . 'T' . $event->start_time . ':00Z',
             'end_date_time' => $event->end_date . 'T' . $event->end_time . ':00Z',
             'price_range' => $priceRange,
-            'ticket_types' => $event->tickets->map(function($ticket) {
-                $soldQuantity = $ticket->sells->count();
-                return [
-                    'id' => $ticket->id,
-                    'name' => $ticket->name,
-                    'description' => $ticket->description,
-                    'price' => (float) $ticket->price,
-                    'available_quantity' => max(0, $ticket->max_qtd - $soldQuantity),
-                    'total_quantity' => $ticket->max_qtd
-                ];
+            'is_sales_closed' => $event->isSalesClosed(),
+            'type_event_id' => $event->type_event_id,
+            'ticket_types' => $event->tickets->map(function($ticket) use ($event) {
+                return $this->formatTicketType($ticket, $event);
             })->toArray(),
             'is_favorite' => $isFavorite,
             'is_sold_out' => $isSoldOut,
@@ -171,6 +166,51 @@ class BaseController extends Controller
     }
 
     /**
+     * Format a ticket type for the mobile catalog / selection screen.
+     * Order: event date first, then ticket sale window, then stock.
+     */
+    protected function formatTicketType($ticket, $event = null): array
+    {
+        $event ??= $ticket->relationLoaded('event') ? $ticket->event : null;
+        $availableQuantity = $ticket->availableQuantity();
+        $saleStatus = $ticket->saleStatus($availableQuantity, $event);
+        $exposeRemaining = $ticket->shouldExposeRemainingQuantity($availableQuantity, $event);
+
+        $formFields = $ticket->relationLoaded('formFields')
+            ? $ticket->formFields
+            : $ticket->formFields()->orderBy('sort_order')->orderBy('id')->get();
+
+        return [
+            'id' => $ticket->id,
+            'name' => $ticket->name,
+            'description' => $ticket->description,
+            'price' => (float) $ticket->price,
+            // Hide remaining stock when blocked by event/ticket dates.
+            'available_quantity' => $exposeRemaining ? $availableQuantity : null,
+            'total_quantity' => $exposeRemaining ? (int) $ticket->max_qtd : null,
+            'max_per_order' => $ticket->max_per_order !== null ? (int) $ticket->max_per_order : null,
+            'start_date' => $ticket->start_date,
+            'end_date' => $ticket->end_date,
+            'start_time' => $ticket->start_time,
+            'end_time' => $ticket->end_time,
+            'is_on_sale' => $saleStatus === 'available',
+            'sale_status' => $saleStatus,
+            'form_fields' => $formFields->map(function ($field) {
+                return [
+                    'id' => $field->id,
+                    'field_key' => $field->field_key,
+                    'label' => $field->label,
+                    'type' => $field->type,
+                    'required' => (bool) $field->required,
+                    'options' => $field->options ?? [],
+                    'terms_text' => $field->terms_text,
+                    'sort_order' => (int) ($field->sort_order ?? 0),
+                ];
+            })->values()->all(),
+        ];
+    }
+
+    /**
      * Format ticket data for API response.
      */
     protected function formatTicket($sell, $sellDetails): array
@@ -189,12 +229,15 @@ class BaseController extends Controller
             'status_id'=>$sellDetails->status,
             'event' => [
                 'id' => $event->id,
+                'slug' => $event->slug,
                 'title' => $event->name,
                 'image_url' => $event->image ? asset('storage/' . $event->image) : null,
                 'date_time' => $event->start_date . 'T' . $event->start_time . ':00Z',
                 'venue' => [
                     'name' => $event->location ?? $event->address,
-                    'address' => $event->address
+                    'address' => $event->address,
+                    'latitude' => $event->latitude !== null ? (float) $event->latitude : null,
+                    'longitude' => $event->longitude !== null ? (float) $event->longitude : null,
                 ]
             ],
             'ticket_type' => [
@@ -207,7 +250,7 @@ class BaseController extends Controller
             'purchase' => [
                 'id' => 'PUR-' . date('Y') . '-' . str_pad($sell->id, 4, '0', STR_PAD_LEFT),
                 'total_amount' => (float) $sell->total,
-                'currency' => 'MZN',
+                'currency' => 'MT',
                 'payment_method' => 'credit_card', // Implementar se necessário
                 'purchased_at' => $sell->created_at->toISOString()
             ],

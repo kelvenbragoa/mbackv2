@@ -99,6 +99,8 @@ class User extends Authenticatable
             'name' => $this->name,
             'email' => $this->email,
             'mobile' => $this->mobile,
+            'phone' => $this->mobile,
+            'address' => $this->address,
             'email_verified_at' => $this->email_verified_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

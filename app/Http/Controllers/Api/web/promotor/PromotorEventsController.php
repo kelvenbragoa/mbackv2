@@ -111,6 +111,8 @@ class PromotorEventsController extends Controller
             'main_category_id' => $data['main_category_id'],
             'second_category_id' => $data['second_category_id'],
             'address' => $data['address'],
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
             'start_date' => date('Y-m-d',strtotime($data['start_date'])),
             'start_time' => $data['start_time'],
             'end_date' => date('Y-m-d',strtotime($data['end_date'])),
