@@ -1,11 +1,18 @@
 <?php
 
 use App\Http\Controllers\GlobalController;
+use App\Http\Controllers\OpenGraphController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Previews de partilha (WhatsApp, Facebook, ...). O Nginx do frontend
+// encaminha os crawlers para aqui; utilizadores normais recebem o SPA.
+Route::get('og/eventos/{slug}', [OpenGraphController::class, 'event'])->where('slug', '[A-Za-z0-9._-]+');
+Route::get('og/p/{slug}', [OpenGraphController::class, 'promotor'])->where('slug', '[A-Za-z0-9._-]+');
+Route::get('og/imagem/{path}', [OpenGraphController::class, 'image'])->where('path', '.*');
 
 // Route::get('sendtwilio',[GlobalController::class,'sendtwilio']);
 
