@@ -18,8 +18,10 @@
     <meta property="og:image" content="{{ $image['url'] }}">
     <meta property="og:image:secure_url" content="{{ $image['url'] }}">
     <meta property="og:image:alt" content="{{ $title }}">
+    @if ($image['type'])
+        <meta property="og:image:type" content="{{ $image['type'] }}">
+    @endif
     @if ($image['width'] && $image['height'])
-        <meta property="og:image:type" content="image/jpeg">
         <meta property="og:image:width" content="{{ $image['width'] }}">
         <meta property="og:image:height" content="{{ $image['height'] }}">
     @endif

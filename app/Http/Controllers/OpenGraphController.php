@@ -79,25 +79,33 @@ class OpenGraphController extends Controller
         $cached = 'og-cache/'.sha1($path).'.jpg';
 
         if (! $disk->exists($cached) || $disk->lastModified($cached) < $disk->lastModified($path)) {
-            $image = Image::make($disk->path($path));
+            try {
+                $image = Image::make($disk->path($path));
 
-            if ($image->width() > config('opengraph.image_max_width')) {
-                $image->resize(config('opengraph.image_max_width'), null, function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
-            }
+                if ($image->width() > config('opengraph.image_max_width')) {
+                    $image->resize(config('opengraph.image_max_width'), null, function ($constraint) {
+                        $constraint->aspectRatio();
+                        $constraint->upsize();
+                    });
+                }
 
-            $quality = (int) config('opengraph.image_quality');
-            $encoded = (string) $image->encode('jpg', $quality);
-
-            // Acima de ~600KB o WhatsApp desiste da imagem e mostra só o texto.
-            while (strlen($encoded) > config('opengraph.image_max_bytes') && $quality > 40) {
-                $quality -= 12;
+                $quality = (int) config('opengraph.image_quality');
                 $encoded = (string) $image->encode('jpg', $quality);
-            }
 
-            $disk->put($cached, $encoded);
+                // Acima de ~600KB o WhatsApp desiste da imagem e mostra só o texto.
+                while (strlen($encoded) > config('opengraph.image_max_bytes') && $quality > 40) {
+                    $quality -= 12;
+                    $encoded = (string) $image->encode('jpg', $quality);
+                }
+
+                $disk->put($cached, $encoded);
+            } catch (\Throwable $e) {
+                // GD sem suporte a WebP, pasta sem permissões de escrita, etc.
+                // Um preview com o ficheiro original é melhor do que um 500.
+                report($e);
+
+                return redirect()->away(rtrim(config('opengraph.storage_url'), '/').'/'.$path);
+            }
         }
 
         return response()->file($disk->path($cached), [
@@ -159,23 +167,45 @@ class OpenGraphController extends Controller
      * URL da imagem + dimensões. Sem og:image:width/height o Facebook processa
      * a imagem de forma assíncrona e as primeiras partilhas saem sem preview.
      *
-     * @return array{url: string, width: int|null, height: int|null}
+     * @return array{url: string, width: int|null, height: int|null, type: string|null}
      */
     private function imageTags(?string $path): array
     {
-        $path = trim((string) $path);
+        $path = ltrim(trim((string) $path), '/');
+        $disk = Storage::disk('public');
 
-        if ($path === '' || str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return ['url' => $path, 'width' => null, 'height' => null, 'type' => null];
+        }
+
+        if ($path === '' || ! $disk->exists($path)) {
+            return ['url' => config('opengraph.fallback_image'), 'width' => null, 'height' => null, 'type' => null];
+        }
+
+        $size = @getimagesize($disk->path($path));
+        $width = $size[0] ?? null;
+        $height = $size[1] ?? null;
+        $mime = $size['mime'] ?? null;
+
+        // JPEG/PNG dentro do limite vão directos do storage, sem conversão.
+        $servableAsIs = in_array($mime, config('opengraph.direct_mime_types'), true)
+            && $disk->size($path) <= config('opengraph.image_max_bytes');
+
+        if ($servableAsIs) {
             return [
-                'url' => $path !== '' ? $path : config('opengraph.fallback_image'),
-                'width' => null,
-                'height' => null,
+                'url' => rtrim(config('opengraph.storage_url'), '/').'/'.$path,
+                'width' => $width,
+                'height' => $height,
+                'type' => $mime,
             ];
         }
 
         return array_merge(
-            ['url' => rtrim(config('opengraph.base_url'), '/').'/og/imagem/'.$this->encodePath($path)],
-            $this->scaledSize($path),
+            [
+                'url' => rtrim(config('opengraph.base_url'), '/').'/og/imagem/'.$this->encodePath($path),
+                'type' => 'image/jpeg',
+            ],
+            $this->scaledSize($width, $height),
         );
     }
 
@@ -195,23 +225,16 @@ class OpenGraphController extends Controller
     }
 
     /**
+     * Dimensões que a conversão vai produzir, sem precisar de a executar.
+     *
      * @return array{width: int|null, height: int|null}
      */
-    private function scaledSize(string $path): array
+    private function scaledSize(?int $width, ?int $height): array
     {
-        $disk = Storage::disk('public');
-
-        if (! $disk->exists($path)) {
+        if (! $width || ! $height) {
             return ['width' => null, 'height' => null];
         }
 
-        $size = @getimagesize($disk->path($path));
-
-        if (! $size) {
-            return ['width' => null, 'height' => null];
-        }
-
-        [$width, $height] = $size;
         $max = (int) config('opengraph.image_max_width');
 
         if ($width > $max) {

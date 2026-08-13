@@ -18,13 +18,17 @@ return [
 
     'base_url' => env('OG_BASE_URL', 'https://backend.mticket.co.mz'),
 
+    'storage_url' => env('OG_STORAGE_URL', 'https://backend.mticket.co.mz/storage'),
+
     'fallback_image' => env('OG_FALLBACK_IMAGE', 'https://mticket.co.mz/demo/images/logo2.png'),
 
     /*
-    | As imagens dos eventos são guardadas em WebP, formato que o WhatsApp não
-    | consegue mostrar no preview. A rota /og/imagem/* devolve uma versão JPEG
-    | redimensionada (e em cache) dentro dos limites aceites pelos crawlers.
+    | JPEG e PNG dentro do limite de tamanho são partilhados directamente do
+    | /storage. O resto (WebP, que o WhatsApp não mostra, ou ficheiros grandes
+    | demais) passa pela rota /og/imagem/*, que devolve um JPEG em cache.
     */
+    'direct_mime_types' => ['image/jpeg', 'image/png'],
+
     'image_max_width' => 1200,
 
     'image_quality' => 82,
