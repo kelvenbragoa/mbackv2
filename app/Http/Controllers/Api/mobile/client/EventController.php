@@ -67,7 +67,8 @@ class EventController extends BaseController
 
             $query = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
-            ])->whereIn('status_id', [1,2,3])
+            // ])->whereIn('status_id', [1,2,3])
+            ])->where('status_id', 2)
               ->where('start_date', '>=', now()->format('Y-m-d'));
 
             // Se tiver coordenadas, filtrar por cidade (simplificação)
@@ -110,7 +111,8 @@ class EventController extends BaseController
             $query = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like',
             ])
-                ->whereIn('status_id', [1, 2, 3])
+                // ->whereIn('status_id', [1, 2, 3])
+                ->where('status_id', 2)
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->where('latitude', '!=', 0)
@@ -153,7 +155,8 @@ class EventController extends BaseController
         try {
             $query = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
-            ])->whereIn('status_id', [1,2,3]);
+            // ])->whereIn('status_id', [1,2,3]);
+            ])->where('status_id', 2);
 
             // Filtro por texto
             if ($search = $request->get('q')) {
@@ -255,7 +258,8 @@ class EventController extends BaseController
             if (strlen($search) >= 2) {
                 // Sugestões de eventos
                 $events = Event::where('name', 'like', "%{$search}%")
-                               ->whereIn('status_id', [1,2,3])
+                            //    ->whereIn('status_id', [1,2,3])
+                               ->where('status_id', 2)
                                ->limit(3)
                                ->get(['id', 'name']);
 
