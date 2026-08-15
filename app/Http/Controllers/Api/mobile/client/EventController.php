@@ -22,7 +22,8 @@ class EventController extends BaseController
 
             $query = Event::with([
                 'category', 'city', 'province', 'tickets', 'sells', 'review', 'like',
-            ])->whereIn('status_id', [1,2,3]); // Assumindo que status 1 é ativo
+            // ])->whereIn('status_id', [1,2,3]); // Assumindo que status 1 é ativo
+            ])->where('status_id', 2);
 
             if ($categoryId) {
                 $query->where('main_category_id', $categoryId);
