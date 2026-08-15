@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\mobile\client\ClientAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,8 @@ use App\Http\Controllers\GlobalController;
 
 Route::post('register', [UserAuthController::class, 'register']);
 Route::post('login', [UserAuthController::class, 'login']);
+Route::post('forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+Route::post('reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1');
 Route::post('updatepassword', [UserAuthController::class, 'updatepassword'])->middleware('auth:sanctum');
 Route::post('logout', [UserAuthController::class, 'logout'])->middleware('auth:sanctum');
 //->middleware(Sanctum::class);;
@@ -178,6 +181,7 @@ Route::prefix('client')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/login', [ClientAuthController::class, 'login']);
         Route::post('/register', [ClientAuthController::class, 'register']);
+        Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
     });
 
     // Rotas protegidas (autenticadas)
@@ -187,6 +191,7 @@ Route::prefix('client')->group(function () {
         Route::get('/me', [ClientAuthController::class, 'me']);
         Route::put('/me', [ClientAuthController::class, 'updateProfile']);
         Route::patch('/me', [ClientAuthController::class, 'updateProfile']);
+        Route::delete('/me', [ClientAuthController::class, 'destroy']);
 
         // ========== EVENTOS ==========
         Route::prefix('events')->group(function () {

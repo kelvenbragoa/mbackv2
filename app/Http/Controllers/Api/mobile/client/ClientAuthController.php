@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\mobile\client;
 
 use App\Http\Controllers\Controller;
+use App\Models\FavoriteEvent;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,13 @@ class ClientAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Email ou senha incorretos.',
+            ], 401);
+        }
+
+        if (str_ends_with((string) $user->email, '@deleted.local')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta conta foi excluída.',
             ], 401);
         }
 
@@ -157,6 +165,43 @@ class ClientAuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Todos os dispositivos foram desconectados!',
+        ]);
+    }
+
+    /**
+     * Excluir (anonimizar) a conta do cliente.
+     * Mantém o registo por integridade de ingressos/histórico, remove PII e revoga tokens.
+     */
+    public function destroy(Request $request)
+    {
+        $user = $request->user();
+
+        if ((int) $user->role_id !== 2) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Contas de organizador não podem ser excluídas pela app. Contacte o suporte.',
+            ], 403);
+        }
+
+        $suffix = $user->id . '_' . now()->format('YmdHis');
+
+        $user->name = 'Conta eliminada';
+        $user->email = "deleted_{$suffix}@deleted.local";
+        $user->mobile = null;
+        $user->address = null;
+        $user->bi = null;
+        $user->image = null;
+        $user->description = null;
+        $user->password = Hash::make(bin2hex(random_bytes(32)));
+        $user->remember_token = null;
+        $user->save();
+
+        FavoriteEvent::where('user_id', $user->id)->delete();
+        $user->tokens()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Conta excluída com sucesso.',
         ]);
     }
 }
