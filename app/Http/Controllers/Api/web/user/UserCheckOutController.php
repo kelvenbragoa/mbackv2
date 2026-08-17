@@ -172,8 +172,11 @@ class UserCheckOutController extends Controller
                     $detail = SellDetails::where('sell_id',$sell->id)->get();
 
                     try {
+                        Log::info('Enviando email para: ' . $data['customerEmail']);
                         Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                        Log::info('Email enviado com sucesso para: ' . $data['customerEmail']);
                         $this->sendwhatsapp($data['customerMobile'],$sell->id);
+                        Log::info('Whatsapp enviado com sucesso para: ' . $data['customerMobile']);
                         // $this->sendtwilio($data['customerMobile'],$sell->id);
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
@@ -297,8 +300,11 @@ class UserCheckOutController extends Controller
                     $detail = SellDetails::where('sell_id',$sell->id)->get();
 
                     try {
+                        Log::info('Enviando email para: ' . $data['customerEmail']);
                         Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
+                        Log::info('Email enviado com sucesso para: ' . $data['customerEmail']);
                         $this->sendwhatsapp($data['customerMobile'],$sell->id);
+                        Log::info('Whatsapp enviado com sucesso para: ' . $data['customerMobile']);
                             } catch (\Throwable $th) {
                                 Log::error($th->getMessage());
                             }
