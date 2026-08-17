@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EventController extends BaseController
 {
@@ -408,6 +409,7 @@ class EventController extends BaseController
             );
 
         } catch (\Exception $e) {
+            Log::error('Erro ao alterar favorito: ' . $e->getMessage());
             return $this->sendError('Erro ao alterar favorito', ['error' => $e->getMessage()], 500);
         }
     }
