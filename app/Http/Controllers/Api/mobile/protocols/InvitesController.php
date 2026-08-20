@@ -59,26 +59,47 @@ class InvitesController extends Controller
     }
 
 
-    public function verifyinvites($id){
-        $invite = CustomerInvite::find($id);
+    public function verifyinvites($id, $userid){
+        $invite = CustomerInvite::findByAccessCode((string) $id);
 
+        if (! $invite) {
+            return response([
+                'message' => 'Convite não encontrado.',
+            ], 404);
+        }
+
+        if ((int) $invite->status === 0 || $invite->verified_at !== null) {
+            return response([
+                'message' => 'Este convite já foi verificado.',
+            ], 409);
+        }
 
         $invite->update([
-            'status'=>0
+            'status' => 0,
+            'verified_by' => $userid,
+            'verified_at' => now(),
         ]);
 
         return response([
-
-            'message' => 'Convite Verificado Com sucesso'
+            'message' => 'Convite Verificado Com sucesso',
         ], 200);
     }
 
     public function status($id){
-        $invite = CustomerInvite::find($id);
-        return response([
-            'status' => $invite->status
-        ], 200);
+        $invite = CustomerInvite::findByAccessCode((string) $id);
 
+        if (! $invite) {
+            return response([
+                'message' => 'Convite não encontrado.',
+            ], 404);
+        }
+
+        return response([
+            'id' => $invite->id,
+            'status' => $invite->status,
+            'event_id' => $invite->event_id,
+            'invite_number' => $invite->invite_number,
+        ], 200);
     }
 
 

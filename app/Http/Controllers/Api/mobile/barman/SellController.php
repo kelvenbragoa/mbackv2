@@ -260,9 +260,22 @@ class SellController extends Controller
     {
         $ticket = SellBar::find($id);
 
+        if (! $ticket) {
+            return response([
+                'message' => 'Recibo não encontrado.',
+            ], 404);
+        }
+
+        if ((int) $ticket->status === 0 || $ticket->verified_at !== null) {
+            return response([
+                'message' => 'Este recibo já foi verificado.',
+            ], 409);
+        }
+
         $ticket->update([
             'status' => 0,
             'verified_by' => $userid,
+            'verified_at' => now(),
         ]);
 
         return response([
@@ -273,6 +286,12 @@ class SellController extends Controller
     public function status($id)
     {
         $sellbar = SellBar::find($id);
+
+        if (! $sellbar) {
+            return response([
+                'message' => 'Recibo não encontrado.',
+            ], 404);
+        }
 
         return response([
             'status' => $sellbar->status,
@@ -307,6 +326,12 @@ class SellController extends Controller
         if ($sell->user_id != $userid) {
             return response([
                 'message' => 'Permissão negada.',
+            ], 403);
+        }
+
+        if ((int) $sell->status === 0 || $sell->verified_at !== null) {
+            return response([
+                'message' => 'Não é possível cancelar um recibo já verificado.',
             ], 403);
         }
 
@@ -347,7 +372,7 @@ class SellController extends Controller
                     }
                 }
 
-                SellBar::destroy($id);
+                $sell->delete();
             });
         } catch (InvalidArgumentException $e) {
             return response([

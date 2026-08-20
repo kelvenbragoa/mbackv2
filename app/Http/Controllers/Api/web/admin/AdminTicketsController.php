@@ -23,6 +23,7 @@ class AdminTicketsController extends Controller
             ->when($request->query('query'), function ($query, $searchQuery) {
                 $query->where(function ($inner) use ($searchQuery) {
                     $inner->where('id', 'like', "%{$searchQuery}%")
+                        ->orWhere('ticket_number', 'like', "%{$searchQuery}%")
                         ->orWhere('name', 'like', "%{$searchQuery}%")
                         ->orWhere('email', 'like', "%{$searchQuery}%")
                         ->orWhere('mobile', 'like', "%{$searchQuery}%")

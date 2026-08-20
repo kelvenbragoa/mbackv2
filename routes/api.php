@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\web\admin\AdminDashboardController;
 use App\Http\Controllers\Api\web\admin\AdminEventsController;
 use App\Http\Controllers\Api\web\admin\AdminTicketsController;
 use App\Http\Controllers\Api\web\admin\AdminTransactionController;
+use App\Http\Controllers\Api\web\admin\AdminAppsController;
 use App\Http\Controllers\Api\web\admin\AdminUsersController;
 use App\Http\Controllers\Api\web\NotficationController;
 use App\Http\Controllers\Api\web\promotor\PromotorBarController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Api\web\user\UserCategoriesController;
 use App\Http\Controllers\Api\web\user\UserCheckOutController;
 use App\Http\Controllers\Api\web\user\UserEventsController;
 use App\Http\Controllers\Api\web\user\UserPromotorPageController;
+use App\Http\Controllers\Api\web\user\StoreAppsController;
 use App\Http\Controllers\Api\web\user\UserTicketsController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
 use App\Http\Controllers\GlobalController;
@@ -56,6 +58,8 @@ Route::resource('cashless', UserCashlessController::class);
 Route::post('cashless-recharge', [UserCashlessController::class, 'recharge']);
 Route::get('promotores', [UserPromotorPageController::class, 'index']);
 Route::get('promotores/{slug}', [UserPromotorPageController::class, 'show']);
+Route::get('apps', [StoreAppsController::class, 'index']);
+Route::get('apps/{slug}/latest', [StoreAppsController::class, 'latest']);
 Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
 
 
@@ -110,6 +114,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('admin-users/{id}/reset-password', [AdminUsersController::class, 'resetPassword']);
     Route::post('admin-users/{id}/page', [AdminUsersController::class, 'updatePage']);
 
+    Route::get('admin-apps', [AdminAppsController::class, 'index']);
+    Route::post('admin-apps/{slug}', [AdminAppsController::class, 'update']);
+    Route::post('admin-apps/{slug}/releases', [AdminAppsController::class, 'storeRelease']);
+
     Route::get('promotor-dashboard/{id}/bilhetes', [PromotorDashboardController::class, 'bilhetes']);
     Route::get('promotor-dashboard/{id}/pacotes', [PromotorDashboardController::class, 'pacotes']);
     Route::get('promotor-dashboard/{id}/convites', [PromotorDashboardController::class, 'convites']);
@@ -133,7 +141,7 @@ Route::get('/alltickets/{id}', [\App\Http\Controllers\Api\mobile\protocols\Ticke
 Route::get('/donetickets/{id}', [\App\Http\Controllers\Api\mobile\protocols\TicketsController::class, 'done']);
 Route::get('/pendingtickets/{id}', [\App\Http\Controllers\Api\mobile\protocols\TicketsController::class, 'pending']);
 Route::get('/ticket/{id}', [\App\Http\Controllers\Api\mobile\protocols\TicketsController::class, 'ticketdetail']);
-Route::get('/verifyticket/{id}', [\App\Http\Controllers\Api\mobile\protocols\TicketsController::class, 'verifyticket']);
+Route::get('/verifyticket/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\protocols\TicketsController::class, 'verifyticket']);
 Route::get('/products/{id}', [\App\Http\Controllers\Api\mobile\protocols\ProductsController::class, 'index']);
 Route::get('/product/{id}', [\App\Http\Controllers\Api\mobile\protocols\ProductsController::class, 'productdetail']);
 Route::post('carts', [\App\Http\Controllers\Api\mobile\protocols\CartsController::class, 'store']);
@@ -149,7 +157,7 @@ Route::get('/allinvites/{id}', [\App\Http\Controllers\Api\mobile\protocols\Invit
 Route::get('/doneinvites/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'done']);
 Route::get('/pendinginvites/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'pending']);
 Route::get('/invite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'invitesdetail']);
-Route::get('/verifyinvite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'verifyinvites']);
+Route::get('/verifyinvite/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'verifyinvites']);
 Route::get('/get-status-invite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'status']);
 
 //ROTAS BARMAN

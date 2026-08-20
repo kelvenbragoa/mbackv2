@@ -4,26 +4,31 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SellDetailBar extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
+
     protected $guarded = [];
 
-    public function product(){
+    public function product()
+    {
         return $this->hasOne('App\Models\Products', 'id', 'product_id');
     }
 
-    public function sell(){
+    public function sell()
+    {
         return $this->hasOne('App\Models\SellBar', 'id', 'sell_id');
     }
 
-    public function user(){
+    public function user()
+    {
         return $this->hasOne('App\Models\Barman', 'id', 'user_id');
     }
 
-    public function transaction(){
+    public function transaction()
+    {
         return $this->hasOne('App\Models\CardTransaction', 'sell_id', 'sell_id');
     }
-
 }

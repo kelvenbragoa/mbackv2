@@ -71,28 +71,47 @@ class TicketsController extends Controller
     }
 
 
-    public function verifyticket($id){
-        $ticket = SellDetails::find($id);
+    public function verifyticket($id, $userid){
+        $ticket = SellDetails::findByAccessCode((string) $id);
 
+        if (! $ticket) {
+            return response([
+                'message' => 'Bilhete não encontrado.',
+            ], 404);
+        }
+
+        if ((int) $ticket->status === 0 || $ticket->verified_at !== null) {
+            return response([
+                'message' => 'Este bilhete já foi verificado.',
+            ], 409);
+        }
 
         $ticket->update([
-            'status'=>0
+            'status' => 0,
+            'verified_by' => $userid,
+            'verified_at' => now(),
         ]);
 
         return response([
-
-            'message' => 'Bilhete Verificado Com sucesso'
+            'message' => 'Bilhete Verificado Com sucesso',
         ], 200);
     }
 
     public function status($id){
-        $ticket = SellDetails::find($id);
+        $ticket = SellDetails::findByAccessCode((string) $id);
+
+        if (! $ticket) {
+            return response([
+                'message' => 'Bilhete não encontrado.',
+            ], 404);
+        }
 
         return response([
-
-            'status' => $ticket->status
+            'id' => $ticket->id,
+            'status' => $ticket->status,
+            'event_id' => $ticket->event_id,
+            'ticket_number' => $ticket->ticket_number,
         ], 200);
-
     }
     /**
      * Show the form for creating a new resource.

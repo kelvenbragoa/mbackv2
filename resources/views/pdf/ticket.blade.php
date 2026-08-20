@@ -193,22 +193,15 @@
                     </div>
                     <div class="barcode">
                         @php
-                            $myObj = new stdClass();
-                            // $myObj->nome = Auth::user()->name;
-                            // $myObj->email = Auth::user()->email;
-                            // $myObj->evento = $event->name;
-                            // $myObj->ticket = $item->ticket->name;
-                            // $myObj->data = $event->start_date;
-                            $myObj->s = $item->status;
-                            $myObj->i = $item->id;
-                            $myObj->ie = $item->event->id;
-                            
-    
-                            $myJSON = json_encode($myObj);
+                            $myJSON = $item->qrcode ?: json_encode([
+                                's' => $item->status,
+                                'i' => $item->id,
+                                'ie' => $item->event->id,
+                            ]);
                         @endphp
-                        <img src="data:image/png;base64, {!! base64_encode(QrCode::format('svg')->size(100)->generate($myJSON)) !!}">
+                        <img src="data:image/png;base64, {!! base64_encode(QrCode::format('svg')->size(120)->generate($myJSON)) !!}">
                         <p class="ticket-number2">
-                            #0{{$item->id}}
+                            {{ $item->ticket_number ?: '#0'.$item->id }}
                         </p>
                         {{-- {!!QrCode::generate($myJSON);!!} --}}
                     </div>
@@ -536,19 +529,16 @@ html {
                 </div>
                 <div class="barcode">
                     @php
-                        $myObj = new stdClass();
-                        
-                        $myObj->s = $item->status;
-                        $myObj->i = $item->id;
-                        $myObj->ie = $item->event->id;
-                        
-
-                        $myJSON = json_encode($myObj);
+                        $myJSON = $item->qrcode ?: json_encode([
+                            's' => $item->status,
+                            'i' => $item->id,
+                            'ie' => $item->event->id,
+                        ]);
                     @endphp
-                    {!!QrCode::generate($myJSON);!!}
+                    {!! QrCode::size(120)->generate($myJSON) !!}
                 </div>
                 <p class="ticket-number">
-                    #0{{$item->id}}
+                    {{ $item->ticket_number ?: '#0'.$item->id }}
                 </p>
             </div>
         </div>

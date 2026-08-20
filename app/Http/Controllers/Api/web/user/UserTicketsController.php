@@ -34,8 +34,12 @@ class UserTicketsController extends Controller
             })
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->query('search');
-                $q->whereHas('event', function ($eventQuery) use ($search) {
-                    $eventQuery->where('name', 'like', "%{$search}%");
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('ticket_number', 'like', "%{$search}%")
+                        ->orWhere('id', 'like', "%{$search}%")
+                        ->orWhereHas('event', function ($eventQuery) use ($search) {
+                            $eventQuery->where('name', 'like', "%{$search}%");
+                        });
                 });
             })
             ->when($request->filled('status'), function ($q) use ($request) {

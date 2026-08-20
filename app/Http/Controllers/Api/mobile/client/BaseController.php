@@ -217,11 +217,12 @@ class BaseController extends Controller
     {
         $ticket = $sellDetails->ticket;
         $event = $sell->event;
-        $qrcodemticket = '{"s":'.$sellDetails->status.',"i":'.$sellDetails->id.',"ie":'.$event->id.'}';
+        $qrcodemticket = $sellDetails->qrcode ?: '{"s":'.$sellDetails->status.',"i":'.$sellDetails->id.',"ie":'.$event->id.'}';
         
         return [
             'id' => 'TKT-' . date('Y') . '-' . str_pad($sell->id, 6, '0', STR_PAD_LEFT),
             'id_mticket'=>$sellDetails->id,
+            'ticket_number' => $sellDetails->ticket_number,
             'qrcode_mticket'=>$qrcodemticket,
             'qr_code' => url('/qr/' . $sell->id), // Implementar geração de QR code
             'barcode' => $sell->id . str_pad($ticket->id, 10, '0', STR_PAD_LEFT),

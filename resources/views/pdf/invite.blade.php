@@ -192,22 +192,15 @@
                     </div>
                     <div class="barcode">
                         @php
-                            $myObj = new stdClass();
-                            // $myObj->nome = Auth::user()->name;
-                            // $myObj->email = Auth::user()->email;
-                            // $myObj->evento = $event->name;
-                            // $myObj->ticket = $customer->invite->name;
-                            // $myObj->data = $event->start_date;
-                            $myObj->s = $customer->status;
-                            $myObj->c = $customer->id;
-                            $myObj->ie = $customer->event->id;
-                            
-    
-                            $myJSON = json_encode($myObj);
+                            $myJSON = $customer->qrcode ?: json_encode([
+                                's' => $customer->status,
+                                'c' => $customer->id,
+                                'ie' => $customer->event->id,
+                            ]);
                         @endphp
-                        <img src="data:image/png;base64, {!! base64_encode(QrCode::format('svg')->size(100)->generate($myJSON)) !!}">
+                        <img src="data:image/png;base64, {!! base64_encode(QrCode::format('svg')->size(120)->generate($myJSON)) !!}">
                         <p class="ticket-number2">
-                            #0{{$customer->id}}
+                            {{ $customer->invite_number ?: '#0'.$customer->id }}
                         </p>
                         {{-- {!!QrCode::generate($myJSON);!!} --}}
                     </div>
