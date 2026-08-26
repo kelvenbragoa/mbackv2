@@ -100,6 +100,40 @@ class Event extends Model
         return $this->hasMany('App\Models\SellDetails', 'event_id', 'id');
     }
 
+    public function live()
+    {
+        return $this->hasOne(Live::class, 'event_id', 'id');
+    }
+
+    public function hasValidTicketFor(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->sell_details()
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('sell', function ($sell) use ($user) {
+                        $sell->where('user_id', $user->id);
+                    });
+            })
+            ->exists();
+    }
+
+    public function canWatchLive(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ((int) $user->role_id === 1 || (int) $this->user_id === (int) $user->id) {
+            return true;
+        }
+
+        return $this->hasValidTicketFor($user);
+    }
+
     public function review(){
         return $this->hasMany('App\Models\Review', 'event_id', 'id');
     }

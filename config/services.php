@@ -35,4 +35,13 @@ return [
         'token' => env('WHATSAPP_TOKEN'),
     ],
 
+    'mux' => [
+        'token_id' => env('MUX_TOKEN_ID'),
+        'token_secret' => env('MUX_TOKEN_SECRET'),
+        'signing_key_id' => env('MUX_SIGNING_KEY_ID'),
+        'signing_key_private' => env('MUX_SIGNING_KEY_PRIVATE'),
+        'webhook_secret' => env('MUX_WEBHOOK_SECRET'),
+        'rtmp_url' => env('MUX_RTMP_URL', 'rtmps://global-live.mux.com:443/app'),
+    ],
+
 ];

@@ -33,7 +33,10 @@ use App\Http\Controllers\Api\web\user\UserEventsController;
 use App\Http\Controllers\Api\web\user\UserPromotorPageController;
 use App\Http\Controllers\Api\web\user\StoreAppsController;
 use App\Http\Controllers\Api\web\user\UserTicketsController;
+use App\Http\Controllers\Api\web\user\UserLiveController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
+use App\Http\Controllers\Api\web\promotor\PromotorLiveController;
+use App\Http\Controllers\Api\MuxWebhookController;
 use App\Http\Controllers\GlobalController;
 // use App\Http\Middleware\Sanctum;
 
@@ -52,6 +55,8 @@ Route::post('logout', [UserAuthController::class, 'logout'])->middleware('auth:s
 
 Route::resource('homepage', WelcomePageController::class);
 Route::resource('eventos', UserEventsController::class);
+Route::get('eventos/{id}/live', [UserLiveController::class, 'show']);
+Route::post('webhooks/mux', [MuxWebhookController::class, 'handle'])->middleware('throttle:60,1');
 Route::resource('checkout', UserCheckOutController::class);
 Route::resource('categories', UserCategoriesController::class);
 Route::resource('cashless', UserCashlessController::class);
@@ -69,6 +74,12 @@ Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('meus-bilhetes', [UserTicketsController::class, 'index']);
     Route::get('meus-bilhetes/{id}', [UserTicketsController::class, 'show']);
+    Route::get('eventos/{id}/live/playback', [UserLiveController::class, 'playback']);
+
+    Route::get('promotor-eventos/{id}/live', [PromotorLiveController::class, 'show']);
+    Route::post('promotor-eventos/{id}/live', [PromotorLiveController::class, 'store']);
+    Route::get('promotor-eventos/{id}/live/playback', [PromotorLiveController::class, 'playback']);
+    Route::delete('promotor-eventos/{id}/live', [PromotorLiveController::class, 'destroy']);
 
     Route::get('auxiliar-event/{id}', [PromotorEventsController::class, 'auxiliar']);
     Route::get('promotor-bar/{id}/copy', [PromotorBarController::class, 'copy']);
