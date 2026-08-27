@@ -79,6 +79,14 @@ class ClientCheckOutController extends Controller
             ], 422);
         }
 
+        $liveError = $this->validateLiveTicketsRequireLogin($request, $data['tickets'] ?? []);
+        if ($liveError !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $liveError,
+            ], 401);
+        }
+
         $order = [];
         $string = substr(str_shuffle(str_repeat($x='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil(3/strlen($x)) )),1,4);
         $transaction = Transaction::orderBy('id','desc')->first();
@@ -426,6 +434,26 @@ class ClientCheckOutController extends Controller
 
         return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
 
+    }
+
+    private function validateLiveTicketsRequireLogin(Request $request, array $tickets): ?string
+    {
+        foreach ($tickets as $item) {
+            if ((int) ($item['quantity'] ?? 0) <= 0) {
+                continue;
+            }
+
+            $ticket = Ticket::find($item['id'] ?? null);
+            if ($ticket && (int) $ticket->is_live === 1) {
+                $user = $request->user() ?? Auth::user();
+                if (! $user) {
+                    return 'Inicia sessão para comprar um bilhete de live.';
+                }
+                break;
+            }
+        }
+
+        return null;
     }
 
     /**

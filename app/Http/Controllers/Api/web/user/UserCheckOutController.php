@@ -14,6 +14,7 @@ use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Notifications\TicketPaid;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
@@ -53,7 +54,21 @@ class UserCheckOutController extends Controller
         $data = $request->all();
 
 
-        $event = Event::find($data['tickets'][0]['event_id']);
+        $event = Event::find($data['tickets'][0]['event_id'] ?? null);
+        if (! $event) {
+            abort(404, 'Evento não encontrado');
+        }
+
+        if ($event->isSalesClosed()) {
+            abort(422, 'As vendas deste evento já terminaram.');
+        }
+
+        $this->assertTicketsOnSale($data['tickets'] ?? []);
+
+        $liveBuyer = $this->assertLiveTicketsRequireLogin($request, $data['tickets'] ?? []);
+        if ($liveBuyer) {
+            $data['user_id'] = $liveBuyer->id;
+        }
 
         $this->assertTicketFormAnswers($data['tickets'] ?? []);
 
@@ -339,9 +354,11 @@ class UserCheckOutController extends Controller
             ->with(['formFields' => function ($query) {
                 $query->orderBy('sort_order')->orderBy('id');
             }])
+            ->withCount('sells')
             ->get()
             ->transform(function ($item) {
                 $item->quantity = 0;
+                $item->available_quantity = $item->availableQuantity();
                 return $item;
             });
 
@@ -425,6 +442,74 @@ class UserCheckOutController extends Controller
 
         return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
 
+    }
+
+    private function assertLiveTicketsRequireLogin(Request $request, array $tickets): ?\App\Models\User
+    {
+        $buyingLive = false;
+
+        foreach ($tickets as $item) {
+            if ((int) ($item['quantity'] ?? 0) <= 0) {
+                continue;
+            }
+
+            $ticket = Ticket::find($item['id'] ?? null);
+            if ($ticket && (int) $ticket->is_live === 1) {
+                $buyingLive = true;
+                break;
+            }
+        }
+
+        if (! $buyingLive) {
+            return null;
+        }
+
+        $user = $request->user('sanctum') ?? Auth::guard('sanctum')->user();
+        if (! $user) {
+            abort(401, 'Inicia sessão para comprar um bilhete de live.');
+        }
+
+        return $user;
+    }
+
+    /**
+     * Reject purchases outside the sale window, over remaining stock, or over max per order.
+     */
+    private function assertTicketsOnSale(array $tickets): void
+    {
+        foreach ($tickets as $item) {
+            $quantity = (int) ($item['quantity'] ?? 0);
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $ticket = Ticket::with('event')->find($item['id'] ?? null);
+            if (! $ticket) {
+                abort(422, 'Um dos bilhetes seleccionados não existe.');
+            }
+
+            $status = $ticket->saleStatus(null, $ticket->event);
+            if ($status !== 'available') {
+                abort(422, match ($status) {
+                    'event_closed' => 'As vendas deste evento já terminaram.',
+                    'not_started' => "As vendas do bilhete \"{$ticket->name}\" ainda não começaram.",
+                    'expired' => "O período de vendas do bilhete \"{$ticket->name}\" já terminou.",
+                    'sold_out' => "O bilhete \"{$ticket->name}\" está esgotado.",
+                    default => "O bilhete \"{$ticket->name}\" está indisponível.",
+                });
+            }
+
+            $available = $ticket->availableQuantity();
+            if ($quantity > $available) {
+                abort(422, "O bilhete \"{$ticket->name}\" não tem quantidade suficiente. Disponível: {$available}.");
+            }
+
+            $perOrder = (int) ($ticket->max_per_order ?? 0);
+            $perOrder = $perOrder > 0 ? $perOrder : 5;
+            if ($quantity > $perOrder) {
+                abort(422, "Só podes comprar até {$perOrder} bilhete(s) de \"{$ticket->name}\" por compra.");
+            }
+        }
     }
 
     /**

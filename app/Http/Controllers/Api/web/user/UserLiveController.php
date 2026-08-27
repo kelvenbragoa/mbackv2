@@ -50,7 +50,7 @@ class UserLiveController extends Controller
 
         if (! $event->canWatchLive($user)) {
             return response()->json([
-                'message' => 'Precisas de um bilhete válido para ver esta live.',
+                'message' => 'Precisas de um bilhete de live para ver esta transmissão.',
             ], 403);
         }
 

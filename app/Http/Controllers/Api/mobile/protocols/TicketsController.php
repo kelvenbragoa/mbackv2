@@ -80,6 +80,14 @@ class TicketsController extends Controller
             ], 404);
         }
 
+        $ticket->loadMissing('ticket');
+
+        if ($ticket->ticket && (int) $ticket->ticket->is_live === 1) {
+            return response([
+                'message' => 'Este bilhete é só para a live online. Não é válido na entrada.',
+            ], 422);
+        }
+
         if ((int) $ticket->status === 0 || $ticket->verified_at !== null) {
             return response([
                 'message' => 'Este bilhete já foi verificado.',
@@ -104,6 +112,14 @@ class TicketsController extends Controller
             return response([
                 'message' => 'Bilhete não encontrado.',
             ], 404);
+        }
+
+        $ticket->loadMissing('ticket');
+
+        if ($ticket->ticket && (int) $ticket->ticket->is_live === 1) {
+            return response([
+                'message' => 'Este bilhete é só para a live online. Não é válido na entrada.',
+            ], 422);
         }
 
         return response([

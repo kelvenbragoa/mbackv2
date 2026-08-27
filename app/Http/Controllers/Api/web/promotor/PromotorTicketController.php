@@ -46,7 +46,8 @@ class PromotorTicketController extends Controller
             'max_per_order' => (isset($data['max_per_order']) && $data['max_per_order'] !== '' && $data['max_per_order'] !== null)
                 ? (int) $data['max_per_order']
                 : null,
-            'is_package'=>0
+            'is_package'=>0,
+            'is_live' => filter_var($data['is_live'] ?? false, FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
 
         ]);
 
@@ -90,6 +91,10 @@ class PromotorTicketController extends Controller
             $data['max_per_order'] = ($data['max_per_order'] === '' || $data['max_per_order'] === null)
                 ? null
                 : (int) $data['max_per_order'];
+        }
+
+        if (array_key_exists('is_live', $data)) {
+            $data['is_live'] = filter_var($data['is_live'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
         }
 
         $ticket->update($data);

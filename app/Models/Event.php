@@ -121,6 +121,25 @@ class Event extends Model
             ->exists();
     }
 
+    public function hasLiveTicketFor(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->sell_details()
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('sell', function ($sell) use ($user) {
+                        $sell->where('user_id', $user->id);
+                    });
+            })
+            ->whereHas('ticket', function ($ticket) {
+                $ticket->where('is_live', 1);
+            })
+            ->exists();
+    }
+
     public function canWatchLive(?User $user): bool
     {
         if (! $user) {
@@ -131,7 +150,7 @@ class Event extends Model
             return true;
         }
 
-        return $this->hasValidTicketFor($user);
+        return $this->hasLiveTicketFor($user);
     }
 
     public function review(){

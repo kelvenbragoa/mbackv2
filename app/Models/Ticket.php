@@ -12,6 +12,10 @@ class Ticket extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'is_live' => 'boolean',
+    ];
+
     public function event()
     {
         return $this->hasOne('App\Models\Event', 'id', 'event_id');
@@ -34,9 +38,13 @@ class Ticket extends Model
 
     public function availableQuantity(): int
     {
-        $sold = $this->relationLoaded('sells')
-            ? $this->sells->count()
-            : $this->sells()->count();
+        if (array_key_exists('sells_count', $this->attributes)) {
+            $sold = (int) $this->attributes['sells_count'];
+        } elseif ($this->relationLoaded('sells')) {
+            $sold = $this->sells->count();
+        } else {
+            $sold = $this->sells()->count();
+        }
 
         return max(0, (int) $this->max_qtd - $sold);
     }
