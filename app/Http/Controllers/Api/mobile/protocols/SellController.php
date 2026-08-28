@@ -102,7 +102,9 @@ class SellController extends Controller
 
                         if ((int) $item->qtd > (int) $ticket->max_qtd) {
                             throw new InvalidArgumentException(
-                                'Stock insuficiente para "'.$ticket->name.'". Disponível: '.$ticket->max_qtd.'.'
+                                ((int) $ticket->max_qtd) <= 0
+                                    ? 'O bilhete "'.$ticket->name.'" está esgotado.'
+                                    : 'Stock insuficiente para "'.$ticket->name.'". Disponível: '.$ticket->max_qtd.'.'
                             );
                         }
 

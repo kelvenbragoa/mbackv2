@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\mobile\protocols;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Carts;
+use App\Models\Ticket;
 use Illuminate\Support\Facades\DB;
 
 
@@ -38,39 +39,64 @@ class CartsController extends Controller
     public function store(Request $request){
 
         $data = $request->all();
+        $qtyToAdd = (int) ($data['qtd'] ?? 0);
+        if ($qtyToAdd <= 0) {
+            return response([
+                'message' => 'Quantidade inválida.',
+            ], 422);
+        }
 
-        if (Carts::where('user_id',0)->where('protocol_id',$data['protocol_id'])->where('ticket_id',$data['ticket_id'])->where('sell_id',null)->exists()) {
-            $rec_data = Carts::where('user_id',0)->where('protocol_id',$data['protocol_id'])->where('ticket_id',$data['ticket_id'])->where('sell_id',null)->first();
-            $qtd = $rec_data->qtd + $data['qtd'];
-            // dd($qtd);
-            //  update($qtd,$rec_data->id );
+        $ticket = Ticket::find($data['ticket_id'] ?? null);
+        if (! $ticket) {
+            return response([
+                'message' => 'Bilhete não encontrado.',
+            ], 404);
+        }
+
+        $available = max(0, (int) $ticket->max_qtd);
+        if ($available <= 0) {
+            return response([
+                'message' => 'Bilhete esgotado.',
+            ], 409);
+        }
+
+        $existing = Carts::where('user_id', 0)
+            ->where('protocol_id', $data['protocol_id'])
+            ->where('ticket_id', $data['ticket_id'])
+            ->whereNull('sell_id')
+            ->first();
+        $inCart = $existing ? (int) $existing->qtd : 0;
+        $remaining = max(0, $available - $inCart);
+
+        if ($qtyToAdd > $remaining) {
+            return response([
+                'message' => $remaining === 0
+                    ? 'Já tens a quantidade máxima deste bilhete no carrinho.'
+                    : 'Só restam '.$remaining.' bilhete(s) disponíveis.',
+            ], 409);
+        }
+
+        if ($existing) {
             DB::table('carts')
-              ->where('id', $rec_data->id )
-              ->update(['qtd' => $qtd]);
-            //   return back()->with('message','Foi aumentado a quantidade do produto, Clique para verificar');
+              ->where('id', $existing->id)
+              ->update(['qtd' => $inCart + $qtyToAdd]);
+
             return response([
                 'message' => 'Foi acrescentada a quantidade do seu produto',
-                
             ], 200);
-        }else{
-            
-            Carts::create([
-                'user_id' => 0,
-                'protocol_id' => $data['protocol_id'],
-                'ticket_id' => $data['ticket_id'],
-                'event_id' => $data['event_id'],
-                'qtd' => $data['qtd'],
-                
-            ]);
-
-            return response([
-                'message' => 'Produto adicionado com sucesso',
-                
-            ], 200);
-        
-    
-            // return back()->with('message','Bilhete adicionado ao carrinho, Clique para verificar');
         }
+
+        Carts::create([
+            'user_id' => 0,
+            'protocol_id' => $data['protocol_id'],
+            'ticket_id' => $data['ticket_id'],
+            'event_id' => $data['event_id'],
+            'qtd' => $qtyToAdd,
+        ]);
+
+        return response([
+            'message' => 'Produto adicionado com sucesso',
+        ], 200);
     }
 
     /**

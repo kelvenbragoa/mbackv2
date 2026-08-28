@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\mobile\protocols;
 
 use App\Http\Controllers\Controller;
+use App\Models\Carts;
 use App\Models\Event;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
@@ -16,13 +17,13 @@ class ProductsController extends Controller
 
         $event = Event::find($id);
 
-        $products = Ticket::where('event_id',$event->id)->orderBy('name','asc')->get();
-        
-        
-
-        // $array[] = array(
-        //     'all_tickets' => $all_tickets,
-        // );
+        $products = Ticket::where('event_id', $event->id)
+            ->orderBy('name', 'asc')
+            ->get()
+            ->transform(function ($item) {
+                $item->available_quantity = max(0, (int) $item->max_qtd);
+                return $item;
+            });
 
         return response([
             'products' => $products,
@@ -30,14 +31,30 @@ class ProductsController extends Controller
 
     }
 
-    public function productdetail($id){
-        
+    public function productdetail(Request $request, $id)
+    {
+        $ticket = Ticket::find($id);
+        if (! $ticket) {
+            return response([
+                'product' => [],
+            ], 200);
+        }
 
-        
+        $available = max(0, (int) $ticket->max_qtd);
+        $inCart = 0;
+        if ($request->filled('protocol_id')) {
+            $inCart = (int) Carts::where('protocol_id', $request->protocol_id)
+                ->where('ticket_id', $id)
+                ->whereNull('sell_id')
+                ->sum('qtd');
+        }
+
+        $ticket->available_quantity = $available;
+        $ticket->can_add = max(0, $available - $inCart);
 
         return response([
-            'product' => Ticket::where('id',$id)->get(),
-        ],200);
+            'product' => [$ticket],
+        ], 200);
     }
 
     /**
