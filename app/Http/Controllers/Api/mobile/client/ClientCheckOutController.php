@@ -79,12 +79,12 @@ class ClientCheckOutController extends Controller
             ], 422);
         }
 
-        $liveError = $this->validateLiveTicketsRequireLogin($request, $data['tickets'] ?? []);
+        $liveError = $this->rejectLiveTickets($data['tickets'] ?? []);
         if ($liveError !== null) {
             return response()->json([
                 'success' => false,
                 'message' => $liveError,
-            ], 401);
+            ], 422);
         }
 
         $order = [];
@@ -346,8 +346,10 @@ class ClientCheckOutController extends Controller
     public function show(string $id)
     {
         //
-        $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')->find($id);
-        $ticket = Ticket::where('event_id', $event->id)->get();
+        $event = Event::with('user')->with('province')->with('city')
+            ->with(['tickets' => fn ($q) => $q->where('is_live', 0)])
+            ->with('like')->with('lineups')->with('type')->find($id);
+        $ticket = Ticket::where('event_id', $event->id)->where('is_live', 0)->get();
 
         $ticket->transform(function ($item){
             $item->quantity = 0;
@@ -436,7 +438,10 @@ class ClientCheckOutController extends Controller
 
     }
 
-    private function validateLiveTicketsRequireLogin(Request $request, array $tickets): ?string
+    /**
+     * Mobile apps cannot yet handle live tickets. Reject purchase until store updates ship.
+     */
+    private function rejectLiveTickets(array $tickets): ?string
     {
         foreach ($tickets as $item) {
             if ((int) ($item['quantity'] ?? 0) <= 0) {
@@ -445,11 +450,7 @@ class ClientCheckOutController extends Controller
 
             $ticket = Ticket::find($item['id'] ?? null);
             if ($ticket && (int) $ticket->is_live === 1) {
-                $user = $request->user() ?? Auth::user();
-                if (! $user) {
-                    return 'Inicia sessão para comprar um bilhete de live.';
-                }
-                break;
+                return 'A compra de bilhetes live ainda não está disponível nesta aplicação. Compra no site mticket.co.mz.';
             }
         }
 

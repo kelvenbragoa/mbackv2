@@ -73,6 +73,9 @@ class BaseController extends Controller
      */
     protected function formatEvent($event, $userId = null): array
     {
+        // Apps nas lojas ainda não suportam bilhetes live.
+        $tickets = $event->tickets->filter(fn ($ticket) => ! (bool) $ticket->is_live)->values();
+
         // Calcular preço mínimo e máximo dos tickets
         $priceRange = [
             'min' => 0,
@@ -80,8 +83,8 @@ class BaseController extends Controller
             'currency' => 'MT'
         ];
 
-        if ($event->tickets->count() > 0) {
-            $prices = $event->tickets->pluck('price')->map(function($price) {
+        if ($tickets->count() > 0) {
+            $prices = $tickets->pluck('price')->map(function($price) {
                 return (float) $price;
             });
             
@@ -98,7 +101,7 @@ class BaseController extends Controller
         }
 
         // Verificar se está esgotado
-        $isSoldOut = $event->tickets->sum('max_qtd') <= $event->sells->count();
+        $isSoldOut = $tickets->sum('max_qtd') <= $event->sells->count();
 
         // Calcular avaliação média
         $rating = [
@@ -135,7 +138,7 @@ class BaseController extends Controller
             'price_range' => $priceRange,
             'is_sales_closed' => $event->isSalesClosed(),
             'type_event_id' => $event->type_event_id,
-            'ticket_types' => $event->tickets->map(function($ticket) use ($event) {
+            'ticket_types' => $tickets->map(function($ticket) use ($event) {
                 return $this->formatTicketType($ticket, $event);
             })->toArray(),
             'is_favorite' => $isFavorite,

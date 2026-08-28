@@ -53,7 +53,7 @@ class CartsController extends Controller
             ], 404);
         }
 
-        $available = max(0, (int) $ticket->max_qtd);
+        $available = $ticket->availableQuantity();
         if ($available <= 0) {
             return response([
                 'message' => 'Bilhete esgotado.',

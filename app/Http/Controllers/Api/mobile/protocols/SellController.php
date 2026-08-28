@@ -100,11 +100,12 @@ class SellController extends Controller
                             throw new InvalidArgumentException('Bilhete #'.$item->ticket_id.' não encontrado.');
                         }
 
-                        if ((int) $item->qtd > (int) $ticket->max_qtd) {
+                        $available = $ticket->availableQuantity();
+                        if ((int) $item->qtd > $available) {
                             throw new InvalidArgumentException(
-                                ((int) $ticket->max_qtd) <= 0
+                                $available <= 0
                                     ? 'O bilhete "'.$ticket->name.'" está esgotado.'
-                                    : 'Stock insuficiente para "'.$ticket->name.'". Disponível: '.$ticket->max_qtd.'.'
+                                    : 'Stock insuficiente para "'.$ticket->name.'". Disponível: '.$available.'.'
                             );
                         }
 
@@ -146,10 +147,6 @@ class SellController extends Controller
                                 'mobile' => '842648618',
                             ]);
                         }
-
-                        $ticket->update([
-                            'max_qtd' => (int) $ticket->max_qtd - (int) $item->qtd,
-                        ]);
 
                         $item->delete();
                     }

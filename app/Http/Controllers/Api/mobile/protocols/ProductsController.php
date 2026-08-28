@@ -18,10 +18,11 @@ class ProductsController extends Controller
         $event = Event::find($id);
 
         $products = Ticket::where('event_id', $event->id)
+            ->withCount('sells')
             ->orderBy('name', 'asc')
             ->get()
             ->transform(function ($item) {
-                $item->available_quantity = max(0, (int) $item->max_qtd);
+                $item->available_quantity = $item->availableQuantity();
                 return $item;
             });
 
@@ -33,14 +34,14 @@ class ProductsController extends Controller
 
     public function productdetail(Request $request, $id)
     {
-        $ticket = Ticket::find($id);
+        $ticket = Ticket::withCount('sells')->find($id);
         if (! $ticket) {
             return response([
                 'product' => [],
             ], 200);
         }
 
-        $available = max(0, (int) $ticket->max_qtd);
+        $available = $ticket->availableQuantity();
         $inCart = 0;
         if ($request->filled('protocol_id')) {
             $inCart = (int) Carts::where('protocol_id', $request->protocol_id)
