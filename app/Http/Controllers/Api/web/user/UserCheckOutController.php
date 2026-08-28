@@ -169,12 +169,7 @@ class UserCheckOutController extends Controller
                                     'form_answers' => $this->formAnswersForUnit($item, $i),
                                 ]);
                             }
-                            $sell->load('selldetails');
-                            $sell->load('ticket');
-                            $sell->load('event.province');
-        
-        
-                            $order[]=$sell;
+                            $order[] = $this->prepareOrderSell($sell);
                         }
                         
                     }
@@ -183,20 +178,7 @@ class UserCheckOutController extends Controller
                     $temporarySell->selldetails()->delete();
                     $temporarySell->delete();
 
-                    $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
-                    $detail = SellDetails::where('sell_id',$sell->id)->get();
-
-                    try {
-                        Log::info('Enviando email para: ' . $data['customerEmail']);
-                        Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
-                        Log::info('Email enviado com sucesso para: ' . $data['customerEmail']);
-                        $this->sendwhatsapp($data['customerMobile'],$sell->id);
-                        Log::info('Whatsapp enviado com sucesso para: ' . $data['customerMobile']);
-                        // $this->sendtwilio($data['customerMobile'],$sell->id);
-                            } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
-                            }
-                    
+                    $this->dispatchTicketNotifications($data, $event, $order);
 
                     return response()->json([
                         'order'=>$order,
@@ -301,28 +283,13 @@ class UserCheckOutController extends Controller
                         'form_answers' => $this->formAnswersForUnit($item, $i),
                     ]);
                 }
-                $sell->load('selldetails');
-                $sell->load('ticket');
-                $sell->load('event.province');
-
-
-                $order[]=$sell;
+                $order[] = $this->prepareOrderSell($sell);
             }
             
         }
 
-        $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
-                    $detail = SellDetails::where('sell_id',$sell->id)->get();
+        $this->dispatchTicketNotifications($data, $event, $order);
 
-                    try {
-                        Log::info('Enviando email para: ' . $data['customerEmail']);
-                        Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
-                        Log::info('Email enviado com sucesso para: ' . $data['customerEmail']);
-                        $this->sendwhatsapp($data['customerMobile'],$sell->id);
-                        Log::info('Whatsapp enviado com sucesso para: ' . $data['customerMobile']);
-                            } catch (\Throwable $th) {
-                                Log::error($th->getMessage());
-                            }
         return response()->json([
             'order'=>$order,
         ]);
@@ -570,5 +537,47 @@ class UserCheckOutController extends Controller
         }
 
         return $answers;
+    }
+
+    private function isLiveSell(Sell $sell): bool
+    {
+        $sell->loadMissing('ticket');
+
+        return $sell->ticket && (int) $sell->ticket->is_live === 1;
+    }
+
+    private function prepareOrderSell(Sell $sell): Sell
+    {
+        $sell->load(['selldetails', 'ticket', 'event.province', 'transaction']);
+
+        if ($this->isLiveSell($sell)) {
+            $sell->selldetails->each(function (SellDetails $detail) {
+                $detail->setAttribute('qrcode', null);
+                $detail->setAttribute('ticket_number', null);
+            });
+        }
+
+        return $sell;
+    }
+
+    private function dispatchTicketNotifications(array $data, Event $event, array $order): void
+    {
+        $physical = collect($order)->last(fn (Sell $sell) => ! $this->isLiveSell($sell));
+        if (! $physical) {
+            return;
+        }
+
+        $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
+        $detail = SellDetails::where('sell_id', $physical->id)->get();
+
+        try {
+            Log::info('Enviando email para: ' . $data['customerEmail']);
+            Mail::to($data['customerEmail'])->send(new SendTickets($detail, $event->id, $physical->id, $msg_content));
+            Log::info('Email enviado com sucesso para: ' . $data['customerEmail']);
+            $this->sendwhatsapp($data['customerMobile'], $physical->id);
+            Log::info('Whatsapp enviado com sucesso para: ' . $data['customerMobile']);
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+        }
     }
 }

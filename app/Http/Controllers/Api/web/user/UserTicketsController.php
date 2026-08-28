@@ -25,7 +25,7 @@ class UserTicketsController extends Controller
             ], 401);
         }
 
-        $query = SellDetails::with(['event.province', 'event.city', 'ticket', 'sell'])
+        $query = SellDetails::with(['event.province', 'event.city', 'ticket', 'sell.transaction'])
             ->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
                     ->orWhereHas('sell', function ($sellQuery) use ($user) {
@@ -63,6 +63,7 @@ class UserTicketsController extends Controller
             ->orderByDesc('id');
 
         $tickets = (clone $query)->paginate($this->perPage($request))->appends($request->query());
+        $tickets->getCollection()->transform(fn ($detail) => $this->hideLiveAccessCodes($detail));
 
         $baseQuery = SellDetails::query()->where(function ($q) use ($user) {
             $q->where('user_id', $user->id)
@@ -103,7 +104,7 @@ class UserTicketsController extends Controller
             ], 401);
         }
 
-        $ticket = SellDetails::with(['event.province', 'event.city', 'ticket', 'sell'])
+        $ticket = SellDetails::with(['event.province', 'event.city', 'ticket', 'sell.transaction'])
             ->where('id', $id)
             ->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
@@ -120,7 +121,17 @@ class UserTicketsController extends Controller
         }
 
         return response()->json([
-            'ticket' => $ticket,
+            'ticket' => $this->hideLiveAccessCodes($ticket),
         ]);
+    }
+
+    private function hideLiveAccessCodes(SellDetails $detail): SellDetails
+    {
+        if ($detail->ticket && (int) $detail->ticket->is_live === 1) {
+            $detail->setAttribute('qrcode', null);
+            $detail->setAttribute('ticket_number', null);
+        }
+
+        return $detail;
     }
 }
