@@ -79,12 +79,12 @@ class ClientCheckOutController extends Controller
             ], 422);
         }
 
-        $liveError = $this->rejectLiveTickets($data['tickets'] ?? []);
+        $liveError = $this->validateLiveTicketsRequireLogin($request, $data['tickets'] ?? []);
         if ($liveError !== null) {
             return response()->json([
                 'success' => false,
                 'message' => $liveError,
-            ], 422);
+            ], 401);
         }
 
         $order = [];
@@ -197,17 +197,7 @@ class ClientCheckOutController extends Controller
                     $temporarySell->selldetails()->delete();
                     $temporarySell->delete();
 
-                    $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
-                    $detail = SellDetails::where('sell_id',$sell->id)->get();
-
-                    try {
-                        Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
-                        $this->sendwhatsapp($data['customerMobile'],$sell->id);
-                        // $this->sendtwilio($data['customerMobile'],$sell->id);
-                            } catch (\Throwable $th) {
-                                
-                            }
-                    
+                    $this->dispatchTicketNotifications($data, $event, $order);
 
                     return response()->json([
                         'order'=>$order,
@@ -322,15 +312,8 @@ class ClientCheckOutController extends Controller
             
         }
 
-        $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
-                    $detail = SellDetails::where('sell_id',$sell->id)->get();
+        $this->dispatchTicketNotifications($data, $event, $order);
 
-                    try {
-                        Mail::to($data['customerEmail'])->send(new SendTickets($detail,$event->id,$sell->id,$msg_content));
-                        $this->sendwhatsapp($data['customerMobile'],$sell->id);
-                            } catch (\Throwable $th) {
-                                
-                            }
         return response()->json([
             'order'=>$order,
         ]);
@@ -346,10 +329,8 @@ class ClientCheckOutController extends Controller
     public function show(string $id)
     {
         //
-        $event = Event::with('user')->with('province')->with('city')
-            ->with(['tickets' => fn ($q) => $q->where('is_live', 0)])
-            ->with('like')->with('lineups')->with('type')->find($id);
-        $ticket = Ticket::where('event_id', $event->id)->where('is_live', 0)->get();
+        $event = Event::with('user')->with('province')->with('city')->with('tickets')->with('like')->with('lineups')->with('type')->find($id);
+        $ticket = Ticket::where('event_id', $event->id)->get();
 
         $ticket->transform(function ($item){
             $item->quantity = 0;
@@ -439,9 +420,9 @@ class ClientCheckOutController extends Controller
     }
 
     /**
-     * Mobile apps cannot yet handle live tickets. Reject purchase until store updates ship.
+     * Live tickets require an authenticated buyer.
      */
-    private function rejectLiveTickets(array $tickets): ?string
+    private function validateLiveTicketsRequireLogin(Request $request, array $tickets): ?string
     {
         foreach ($tickets as $item) {
             if ((int) ($item['quantity'] ?? 0) <= 0) {
@@ -450,11 +431,39 @@ class ClientCheckOutController extends Controller
 
             $ticket = Ticket::find($item['id'] ?? null);
             if ($ticket && (int) $ticket->is_live === 1) {
-                return 'A compra de bilhetes live ainda não está disponível nesta aplicação. Compra no site mticket.co.mz.';
+                $user = $request->user() ?? Auth::user();
+                if (! $user) {
+                    return 'Inicia sessão para comprar um bilhete de live.';
+                }
+                break;
             }
         }
 
         return null;
+    }
+
+    private function isLiveSell(Sell $sell): bool
+    {
+        $sell->loadMissing('ticket');
+
+        return $sell->ticket && (int) $sell->ticket->is_live === 1;
+    }
+
+    private function dispatchTicketNotifications(array $data, Event $event, array $order): void
+    {
+        $physical = collect($order)->last(fn (Sell $sell) => ! $this->isLiveSell($sell));
+        if (! $physical) {
+            return;
+        }
+
+        $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
+        $detail = SellDetails::where('sell_id', $physical->id)->get();
+
+        try {
+            Mail::to($data['customerEmail'])->send(new SendTickets($detail, $event->id, $physical->id, $msg_content));
+            $this->sendwhatsapp($data['customerMobile'], $physical->id);
+        } catch (\Throwable $th) {
+        }
     }
 
     /**

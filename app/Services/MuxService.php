@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Live;
 use Firebase\JWT\JWT;
+use Illuminate\Support\Facades\Cache;
 use MuxPhp\Api\LiveStreamsApi;
 use MuxPhp\ApiException;
 use MuxPhp\Configuration;
@@ -74,6 +76,44 @@ class MuxService
         } catch (ApiException $e) {
             throw new RuntimeException('Falha ao reactivar live stream no Mux: '.$e->getMessage(), $e->getCode(), $e);
         }
+    }
+
+    public function getLiveStreamStatus(string $muxLiveStreamId): ?string
+    {
+        try {
+            $stream = $this->liveApi->getLiveStream($muxLiveStreamId)->getData();
+        } catch (ApiException $e) {
+            return null;
+        }
+
+        if (! $stream) {
+            return null;
+        }
+
+        return match (strtolower((string) $stream->getStatus())) {
+            'active' => Live::STATUS_ACTIVE,
+            'disabled' => Live::STATUS_DISABLED,
+            default => Live::STATUS_IDLE,
+        };
+    }
+
+    public function syncLiveStatus(Live $live): Live
+    {
+        if ($live->status === Live::STATUS_DISABLED) {
+            return $live;
+        }
+
+        $cacheKey = 'mux-live-status:'.$live->mux_live_stream_id;
+        $status = Cache::remember($cacheKey, 8, function () use ($live) {
+            return $this->getLiveStreamStatus($live->mux_live_stream_id);
+        });
+
+        if ($status && $status !== $live->status) {
+            $live->update(['status' => $status]);
+            Cache::forget($cacheKey);
+        }
+
+        return $live->fresh() ?? $live;
     }
 
     public function generatePlaybackToken(string $playbackId, int $ttlHours = 4): string

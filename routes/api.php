@@ -222,6 +222,7 @@ Route::prefix('client')->group(function () {
             Route::get('/favorites', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'favorites']);
             Route::post('/generate-slugs', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'generateSlugs']);
             Route::post('/{id}/toggle-favorite', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'toggleEvent']);
+            Route::get('/{id}/live/playback', [UserLiveController::class, 'playback']);
             Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
         });
 
@@ -274,6 +275,7 @@ Route::prefix('client')->group(function () {
     Route::get('/events/featured', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'featured']);
     Route::get('/events/map', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'map']);
     Route::get('/events/search', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'search']);
+    Route::get('/events/{id}/live', [UserLiveController::class, 'show']);
     Route::get('/events/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
     Route::get('/search/popular', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'popularSearches']);
     Route::get('/banners', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'index']);

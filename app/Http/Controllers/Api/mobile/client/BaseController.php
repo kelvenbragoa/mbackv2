@@ -73,8 +73,7 @@ class BaseController extends Controller
      */
     protected function formatEvent($event, $userId = null): array
     {
-        // Apps nas lojas ainda não suportam bilhetes live.
-        $tickets = $event->tickets->filter(fn ($ticket) => ! (bool) $ticket->is_live)->values();
+        $tickets = $event->tickets;
 
         // Calcular preço mínimo e máximo dos tickets
         $priceRange = [
@@ -198,6 +197,7 @@ class BaseController extends Controller
             'end_time' => $ticket->end_time,
             'is_on_sale' => $saleStatus === 'available',
             'sale_status' => $saleStatus,
+            'is_live' => (bool) $ticket->is_live,
             'form_fields' => $formFields->map(function ($field) {
                 return [
                     'id' => $field->id,
@@ -220,14 +220,17 @@ class BaseController extends Controller
     {
         $ticket = $sellDetails->ticket;
         $event = $sell->event;
-        $qrcodemticket = $sellDetails->qrcode ?: '{"s":'.$sellDetails->status.',"i":'.$sellDetails->id.',"ie":'.$event->id.'}';
+        $isLive = $ticket && (int) $ticket->is_live === 1;
+        $qrcodemticket = $isLive
+            ? null
+            : ($sellDetails->qrcode ?: '{"s":'.$sellDetails->status.',"i":'.$sellDetails->id.',"ie":'.$event->id.'}');
         
         return [
             'id' => 'TKT-' . date('Y') . '-' . str_pad($sell->id, 6, '0', STR_PAD_LEFT),
             'id_mticket'=>$sellDetails->id,
-            'ticket_number' => $sellDetails->ticket_number,
+            'ticket_number' => $isLive ? null : $sellDetails->ticket_number,
             'qrcode_mticket'=>$qrcodemticket,
-            'qr_code' => url('/qr/' . $sell->id), // Implementar geração de QR code
+            'qr_code' => $isLive ? null : url('/qr/' . $sell->id),
             'barcode' => $sell->id . str_pad($ticket->id, 10, '0', STR_PAD_LEFT),
             'status' => $this->getTicketStatus($sell),
             'status_id'=>$sellDetails->status,
@@ -249,7 +252,8 @@ class BaseController extends Controller
                 'name' => $ticket->name,
                 'section' => null,
                 'row' => null,
-                'seat' => null
+                'seat' => null,
+                'is_live' => $isLive,
             ],
             'purchase' => [
                 'id' => 'PUR-' . date('Y') . '-' . str_pad($sell->id, 4, '0', STR_PAD_LEFT),

@@ -29,8 +29,10 @@ class UserLiveController extends Controller
             ]);
         }
 
+        $live = $this->mux->syncLiveStatus($event->live);
+
         return response()->json([
-            'live' => $event->live->toPublicArray(),
+            'live' => $live->toPublicArray(),
         ]);
     }
 
@@ -54,8 +56,10 @@ class UserLiveController extends Controller
             ], 403);
         }
 
+        $live = $this->mux->syncLiveStatus($event->live);
+
         try {
-            $token = $this->mux->generatePlaybackToken($event->live->playback_id);
+            $token = $this->mux->generatePlaybackToken($live->playback_id);
         } catch (RuntimeException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -63,9 +67,9 @@ class UserLiveController extends Controller
         }
 
         return response()->json([
-            'status' => $event->live->status,
-            'active' => $event->live->isActive(),
-            'url' => $this->mux->playbackUrl($event->live->playback_id, $token),
+            'status' => $live->status,
+            'active' => $live->isActive(),
+            'url' => $this->mux->playbackUrl($live->playback_id, $token),
         ]);
     }
 

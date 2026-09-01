@@ -33,8 +33,10 @@ class PromotorLiveController extends Controller
             ], 404);
         }
 
+        $live = $this->mux->syncLiveStatus($event->live);
+
         return response()->json([
-            'live' => $event->live->toPromotorArray(),
+            'live' => $live->toPromotorArray(),
         ]);
     }
 
@@ -100,8 +102,10 @@ class PromotorLiveController extends Controller
             ], 404);
         }
 
+        $live = $this->mux->syncLiveStatus($event->live);
+
         try {
-            $token = $this->mux->generatePlaybackToken($event->live->playback_id);
+            $token = $this->mux->generatePlaybackToken($live->playback_id);
         } catch (RuntimeException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -109,9 +113,9 @@ class PromotorLiveController extends Controller
         }
 
         return response()->json([
-            'status' => $event->live->status,
-            'active' => $event->live->isActive(),
-            'url' => $this->mux->playbackUrl($event->live->playback_id, $token),
+            'status' => $live->status,
+            'active' => $live->isActive(),
+            'url' => $this->mux->playbackUrl($live->playback_id, $token),
         ]);
     }
 
