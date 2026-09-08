@@ -47,14 +47,18 @@ class UserTicketsController extends Controller
                 $today = now()->toDateString();
 
                 if ($status === 'used') {
-                    $q->where('status', 1);
+                    $q->where(function ($inner) {
+                        $inner->where('status', 0)->orWhereNotNull('verified_at');
+                    });
                 } elseif ($status === 'upcoming') {
-                    $q->where('status', '!=', 1)
+                    $q->where('status', 1)
+                        ->whereNull('verified_at')
                         ->whereHas('event', function ($eventQuery) use ($today) {
                             $eventQuery->whereDate('end_date', '>=', $today);
                         });
                 } elseif ($status === 'expired') {
-                    $q->where('status', '!=', 1)
+                    $q->where('status', 1)
+                        ->whereNull('verified_at')
                         ->whereHas('event', function ($eventQuery) use ($today) {
                             $eventQuery->whereDate('end_date', '<', $today);
                         });
@@ -74,13 +78,18 @@ class UserTicketsController extends Controller
 
         $today = now()->toDateString();
 
+        $unused = fn ($q) => $q->where('status', 1)->whereNull('verified_at');
+        $used = fn ($q) => $q->where(function ($inner) {
+            $inner->where('status', 0)->orWhereNotNull('verified_at');
+        });
+
         $summary = [
             'total' => (clone $baseQuery)->count(),
-            'upcoming' => (clone $baseQuery)->where('status', '!=', 1)
+            'upcoming' => (clone $baseQuery)->tap($unused)
                 ->whereHas('event', fn ($e) => $e->whereDate('end_date', '>=', $today))
                 ->count(),
-            'used' => (clone $baseQuery)->where('status', 1)->count(),
-            'expired' => (clone $baseQuery)->where('status', '!=', 1)
+            'used' => (clone $baseQuery)->tap($used)->count(),
+            'expired' => (clone $baseQuery)->tap($unused)
                 ->whereHas('event', fn ($e) => $e->whereDate('end_date', '<', $today))
                 ->count(),
         ];

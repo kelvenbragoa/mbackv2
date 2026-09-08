@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\web\user\WelcomePageController;
 use App\Http\Controllers\Api\web\promotor\PromotorLiveController;
 use App\Http\Controllers\Api\MuxWebhookController;
 use App\Http\Controllers\GlobalController;
+use App\Http\Controllers\Api\MediaController;
 // use App\Http\Middleware\Sanctum;
 
 // Route::get('/user', function (Request $request) {
@@ -57,6 +58,7 @@ Route::resource('homepage', WelcomePageController::class);
 Route::resource('eventos', UserEventsController::class);
 Route::get('eventos/{id}/live', [UserLiveController::class, 'show']);
 Route::post('webhooks/mux', [MuxWebhookController::class, 'handle'])->middleware('throttle:60,1');
+Route::post('checkout/email-ticket', [UserCheckOutController::class, 'emailTicket'])->middleware('throttle:10,1');
 Route::resource('checkout', UserCheckOutController::class);
 Route::resource('categories', UserCategoriesController::class);
 Route::resource('cashless', UserCashlessController::class);
@@ -66,6 +68,7 @@ Route::get('promotores/{slug}', [UserPromotorPageController::class, 'show']);
 Route::get('apps', [StoreAppsController::class, 'index']);
 Route::get('apps/{slug}/latest', [StoreAppsController::class, 'latest']);
 Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
+Route::get('media/{path}', [MediaController::class, 'show'])->where('path', '.*')->middleware('throttle:60,1');
 
 
 
@@ -118,6 +121,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('admin-transacoes/{id}/confirmar', [AdminTransactionController::class, 'confirm']);
     Route::get('admin-tickets', [AdminTicketsController::class, 'index']);
     Route::get('admin-tickets/{id}', [AdminTicketsController::class, 'show']);
+    Route::post('admin-tickets/{id}/resend', [AdminTicketsController::class, 'resend']);
 
     Route::get('admin-users', [AdminUsersController::class, 'index']);
     Route::get('admin-users/{id}', [AdminUsersController::class, 'show']);

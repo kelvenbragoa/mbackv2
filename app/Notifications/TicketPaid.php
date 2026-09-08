@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notification;
 use NotificationChannels\WhatsApp\Component;
 use NotificationChannels\WhatsApp\WhatsAppChannel;
 use NotificationChannels\WhatsApp\WhatsAppTemplate;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 
 class TicketPaid extends Notification
@@ -50,25 +50,29 @@ class TicketPaid extends Notification
      */
     public function toWhatsapp()
     {
-
         $url = $this->url;
         $sell = Sell::find($this->sell_id);
-        $event = Event::find($sell->event_id);
+        $event = $sell ? Event::find($sell->event_id) : null;
 
+        $amount = number_format((float) ($sell?->total ?? $sell?->price ?? 0), 2, '.', '').' MT';
+        $from = $this->whatsappAddress($event?->name ?: 'MTicket');
+        $document = 'ticket';
 
         return WhatsAppTemplate::create()
-            ->name('purchase_receipt_1') // Name of your configured template
+            ->name('purchase_receipt_1')
             ->header(Component::document($url))
-            // ->header(Component::image('https://mticket.co.mz/demo/images/logo2.png'))
-            ->body(Component::text('ticket for '.$event->name))
-            ->body(Component::text('Mticket. For support contact: suporte@email.com or mobile: +258 84 264 8618 / 84 228 0974'))
-            ->body(Component::text('Ticket'))
-            // ->body(Component::dateTime(new \DateTimeImmutable))
-            // ->body(Component::text('Star Wars'))
-            // ->body(Component::text('5'))
-            // ->buttons(Component::quickReplyButton(['Thanks for your reply!']))
-            // ->buttons(Component::urlButton(['reply/01234'])) // List of url suffixes
+            ->body(Component::text($amount))
+            ->body(Component::text($from))
+            ->body(Component::text($document))
             ->to($this->number);
+    }
+
+    private function whatsappAddress(string $value): string
+    {
+        $value = trim(preg_replace('/\s+/', ' ', $value) ?? '');
+        $value = $value !== '' ? $value : 'MTicket';
+
+        return Str::limit($value, 60, '');
     }
 
     /**

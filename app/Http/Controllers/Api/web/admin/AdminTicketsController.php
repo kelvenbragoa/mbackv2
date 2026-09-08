@@ -3,10 +3,16 @@
 namespace App\Http\Controllers\Api\web\admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\TicketFile;
+use App\Mail\SendTickets;
 use App\Models\SellDetails;
+use App\Notifications\TicketPaid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 class AdminTicketsController extends Controller
 {
@@ -60,9 +66,7 @@ class AdminTicketsController extends Controller
             return $denied;
         }
 
-        $ticket = SellDetails::with('event.province')
-            ->with('sell.transaction')
-            ->with('ticket')
+        $ticket = SellDetails::with(['event.province', 'event.city', 'sell.transaction', 'ticket'])
             ->find($id);
 
         if (!$ticket) {
@@ -71,6 +75,86 @@ class AdminTicketsController extends Controller
 
         return response()->json([
             'ticket' => $ticket,
+        ]);
+    }
+
+    public function resend(Request $request, string $id)
+    {
+        if ($denied = $this->denyNonAdmin()) {
+            return $denied;
+        }
+
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'mobile' => ['nullable', 'string', 'max:30'],
+            'pdf' => ['nullable', 'file', 'max:10240'],
+        ]);
+
+        $ticket = SellDetails::with(['event', 'ticket', 'sell'])->find($id);
+        if (! $ticket) {
+            return response()->json(['message' => 'Bilhete não encontrado.'], 404);
+        }
+
+        $isLive = $ticket->ticket && (int) $ticket->ticket->is_live === 1;
+        $pdfBinary = null;
+
+        if (! $isLive) {
+            if (! $request->hasFile('pdf')) {
+                return response()->json(['message' => 'O PDF do bilhete é obrigatório.'], 422);
+            }
+
+            $pdfBinary = file_get_contents($request->file('pdf')->getRealPath());
+            if ($pdfBinary === false || $pdfBinary === '' || ! str_starts_with($pdfBinary, '%PDF')) {
+                return response()->json(['message' => 'PDF inválido.'], 422);
+            }
+        }
+
+        $email = $data['email'];
+        $mobile = trim((string) ($data['mobile'] ?? ''));
+
+        $ticket->email = $email;
+        $ticket->mobile = $mobile !== '' ? $mobile : $ticket->mobile;
+        $ticket->save();
+
+        if ($ticket->sell_id) {
+            SellDetails::where('sell_id', $ticket->sell_id)->update([
+                'email' => $email,
+                'mobile' => $ticket->mobile,
+            ]);
+            $ticket->sell?->update([
+                'email' => $email,
+                'mobile' => $ticket->mobile,
+            ]);
+        }
+
+        $event = $ticket->event;
+        if (! $event) {
+            return response()->json(['message' => 'Evento não encontrado.'], 422);
+        }
+
+        $msg = "Olá, {$ticket->name}. Segue o seu bilhete para o evento {$event->name}.";
+        $detail = SellDetails::where('id', $ticket->id)->get();
+        $sellId = $ticket->sell_id ?: $ticket->id;
+        $attachment = $isLive ? '' : $pdfBinary;
+
+        try {
+            Mail::to($email)->send(new SendTickets($detail, $event->id, $sellId, $msg, $attachment));
+
+            if (! $isLive && $ticket->mobile && $pdfBinary) {
+                $url = TicketFile::temporaryUrl((int) $sellId, $pdfBinary);
+                if ($url) {
+                    Notification::send($ticket->mobile, new TicketPaid($url, $sellId, $ticket->mobile));
+                }
+            }
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+
+            return response()->json(['message' => 'Contactos gravados, mas não foi possível reenviar o bilhete.'], 500);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'ticket' => $ticket->fresh(['event.province', 'event.city', 'sell.transaction', 'ticket']),
         ]);
     }
 

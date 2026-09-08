@@ -4,14 +4,12 @@ namespace App\Mail;
 
 use App\Models\Event;
 use App\Models\Sell;
-use App\Models\SellDetails;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\TicketPdf;
 use Illuminate\Mail\Mailables\Attachment;
 
 class SendTickets extends Mailable
@@ -22,19 +20,19 @@ class SendTickets extends Mailable
     private $event;
     private $msg;
     private $sell;
+    private $pdfContents = null;
 
 
     /**
      * Create a new message instance.
      */
-    public function __construct($detail,$event,$sell, $msg)
+    public function __construct($detail, $event, $sell, $msg, ?string $pdfContents = null)
     {
-        //
         $this->detail = $detail;
         $this->event = $event;
         $this->msg = $msg;
         $this->sell = $sell;
-        
+        $this->pdfContents = $pdfContents;
     }
 
     /**
@@ -43,8 +41,10 @@ class SendTickets extends Mailable
     public function envelope(): Envelope
     {
         $event = Event::find($this->event);
+        $name = $event?->name ?: 'MTicket';
+
         return new Envelope(
-            subject: 'Ticket Issued -'.$event->name,
+            subject: 'O teu bilhete MTicket — '.$name,
         );
     }
 
@@ -53,17 +53,17 @@ class SendTickets extends Mailable
      */
     public function content(): Content
     {
-        $msg_content = $this->msg;
-        $sell_model = Sell::find($this->sell);
-        $event = Event::find($sell_model->event_id);
+        $sell_model = Sell::with(['event.province', 'event.city', 'ticket', 'transaction', 'selldetails'])
+            ->find($this->sell);
+        $event = $sell_model?->event ?? Event::with(['province', 'city'])->find($this->event);
 
         return new Content(
-            markdown: 'mail.tickets',
-            with:[
-                'msg_content'=>$msg_content,
-                'sell_model'=>$sell_model,
-                'event'=>$event,
-               
+            html: 'mail.tickets',
+            with: [
+                'msg_content' => $this->msg,
+                'sell_model' => $sell_model,
+                'event' => $event,
+                'has_pdf' => $this->pdfContents !== '',
             ],
         );
     }
@@ -75,32 +75,28 @@ class SendTickets extends Mailable
      */
     public function attachments()
     {
-        // App::setLocale(Auth::user()->lang);
+        if ($this->pdfContents === '') {
+            return [];
+        }
+
+        if (is_string($this->pdfContents)) {
+            $binary = $this->pdfContents;
+
+            return [
+                Attachment::fromData(fn () => $binary, 'ticket.pdf')
+                    ->withMime('application/pdf'),
+            ];
+        }
+
         $sell = Sell::find($this->sell);
+        if (! $sell) {
+            return [];
+        }
 
-        // $pdf = Pdf::loadView('manager.meeting.meeting', $meeting)->setOptions([
-        //     'defaultFont' => 'sans-serif',
-        //     'isRemoteEnabled' => 'true'
-        // ]);
-       
-        $detail = SellDetails::where('sell_id',$sell->id)->get();
-
-        $event = Event::find($sell->event_id);
-
-        $data = [
-            'detail'=>$detail,
-            'event'=>$event,
-        ];
-
-        // $pdf = Pdf::loadView('pdf.ticket', $data)->setOptions([
-        //     'defaultFont' => 'sans-serif',
-        //     'isRemoteEnabled' => 'true'
-        // ]);
-
-        $pdf = Pdf::loadView('pdf.ticket', $data)->setOptions([
-            'defaultFont' => 'sans-serif',
-            'isRemoteEnabled' => 'true'
-        ]);
+        $pdf = TicketPdf::forSellId((int) $sell->id);
+        if (! $pdf) {
+            return [];
+        }
 
         return [
             Attachment::fromData(fn () => $pdf->output(), 'ticket.pdf')

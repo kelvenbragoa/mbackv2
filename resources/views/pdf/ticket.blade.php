@@ -1,559 +1,291 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Bilhete</title>
-    {{-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" /> --}}
+    <title>Bilhete MTicket</title>
     <style>
-        @page {
-            margin: 0px;
+        @page { margin: 6px; }
+        * { margin: 0; padding: 0; }
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            color: #0a2540;
+            font-size: 11px;
         }
-        .break-page{
-          page-break-after: always;
+        .page {
+            page-break-after: always;
         }
-
-        html {
-            margin: 70px ;
-            color: black;
-            font-size: 10px;
-            letter-spacing: 0.1em;
-            margin: 10px;
-            font-family: "Staatliches", cursive;
-            background: #ffffff;
-        
+        .page:last-child {
+            page-break-after: auto;
         }
-
         .ticket {
-            background: #f3f3f3;
-        },
-        .image {
-        height: 250px;
-        width: 250px;
-        background-image: url("https://backend.mticket.co.mz/storage/{{$event->image}}");
-        background-size: contain;
-        opacity: 0.85;
-    },
-    .date {
-        border-top: 1px solid gray;
-        border-bottom: 1px solid gray;
-        padding: 5px 0;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-    },
-    .date .june-29 {
-        color: #d83565;
-        font-size: 12px;
-    },
-    .show-name {
-        font-size: 10px;
-        font-family: "Open Sans", cursive;
-        color: #000000;
-    },
-    .show-name h1 {
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        /* color: #04aff4; */
-        color: black;
-    },
-    .cardticket {
-       
-       align-items: center;
-       padding: 10px 30px;
-       display: flex;
-       flex-direction: column;
-       text-align: center;
-       justify-content: space-between;
-       align-items: center;
-       max-width: 50ch;
-   
-   }
-   
-   .cardticket p {
-       color: black
-   },
-   .time {
-        padding: 10px 0;
-        /* color: #04aff4; */
-        color: black;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        font-weight: 700;
-    }
-    
-    .time span {
-        font-weight: 400;
-        color: gray;
-    }
-    
-    .left .time {
-        font-size: 12px;
-    },
-    .location {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        width: 100%;
-        padding-top: 8px;
-        border-top: 1px solid gray;
-    }
-    
-    .location .separator {
-        font-size: 12px;
-    },
-    .barcode {
-        height: 100px;
-    }
-    
-    .barcode img {
-        height: 100%;
-    },
-    .ticket-number2 {
-        color: gray;
-    },
-    .ticket-number1 {
-        height: 250px;
-        width: 250px;
-        display: flex;
-        justify-content: flex-end;
-        align-items: flex-end;
-        padding: 5px;
-    },
-    .admit-one {
-        position: absolute;
-        color: darkgray;
-        height: 250px;
-        padding: 0 10px;
-        letter-spacing: 0.15em;
-        display: flex;
-        text-align: center;
-        justify-content: space-around;
-        writing-mode: vertical-rl;
-        transform: rotate(-180deg);
-    }
-    
-    .admit-one span:nth-child(2) {
-        color: white;
-        font-weight: 700;
-    }
-    
-   
- 
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+        }
+        .col-image {
+            width: 28%;
+            height: 250px;
+            background-color: #0a2540;
+            color: #ffffff;
+            vertical-align: bottom;
+            padding: 0;
+        }
+        .col-image img.cover {
+            width: 210px;
+            height: 250px;
+            display: block;
+        }
+        .image-caption {
+            position: relative;
+            padding: 12px 14px 16px;
+            color: #ffffff;
+        }
+        .brand {
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 0.4px;
+            margin-bottom: 8px;
+        }
+        .brand-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            background: #ffffff;
+            border-radius: 50%;
+        }
+        .event-title {
+            font-size: 15px;
+            font-weight: bold;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+        .col-info {
+            width: 48%;
+            vertical-align: top;
+            padding: 16px 18px;
+            border-right: 1px dashed #c9d8e4;
+        }
+        .logo-mark {
+            width: 26px;
+            height: 26px;
+            background: #08a9e6;
+            color: #ffffff;
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            line-height: 26px;
+        }
+        .logo-text {
+            font-size: 15px;
+            font-weight: bold;
+            color: #0a2540;
+            padding-left: 8px;
+        }
+        .logo-text span { color: #08a9e6; }
+        .slogan {
+            font-size: 9px;
+            font-style: italic;
+            color: #5b6472;
+            padding: 4px 0 10px;
+        }
+        .eyebrow {
+            font-size: 8px;
+            font-weight: bold;
+            color: #08a9e6;
+            letter-spacing: 1px;
+        }
+        .event-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #0a2540;
+            padding: 2px 0 10px;
+            line-height: 1.25;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-top: 1px dashed #e3e9ef;
+        }
+        .info-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 7px 8px 0 0;
+        }
+        .info-label {
+            font-size: 8px;
+            font-weight: bold;
+            color: #5b6472;
+        }
+        .info-value {
+            font-size: 10px;
+            font-weight: bold;
+            color: #0a2540;
+            padding-top: 1px;
+        }
+        .badge {
+            display: inline-block;
+            background: #e7f8ee;
+            color: #159a52;
+            font-size: 8px;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 10px;
+        }
+        .col-qr {
+            width: 24%;
+            background: #08a9e6;
+            color: #ffffff;
+            text-align: center;
+            vertical-align: middle;
+            padding: 14px 10px;
+        }
+        .qr-caption {
+            font-size: 8px;
+            font-weight: bold;
+            letter-spacing: 0.8px;
+            opacity: 0.9;
+        }
+        .qr-code-id {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 0 8px;
+        }
+        .qr-box {
+            background: #ffffff;
+            padding: 8px;
+            display: inline-block;
+        }
+        .qr-box img {
+            width: 110px;
+            height: 110px;
+            display: block;
+        }
+        .qr-instruction {
+            font-size: 8px;
+            font-weight: bold;
+            padding-top: 8px;
+        }
+        .qr-subtext {
+            font-size: 8px;
+            padding-top: 4px;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
-
-
-    @php
-    $i = 1;
-    @endphp
-
-    @foreach ($detail as $item)
-    <div class="ticket">
-        <table width="95%">
-            <tr>
-                <td rowspan="3">
-                    <div class="image">
-                        <img width="240px" height="240px" src="https://backend.mticket.co.mz/storage/{{$event->image}}" alt="">
-                    </div>
-                 
-                    
-                </td>
-                <td align="center" > 
-                    <p class="date" style="justify-content: space-arround">
-                    <span>{{date('l',strtotime($item->event->start_date))}}</span>
-                    <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <span class="june-29">{{date('d-m',strtotime($item->event->start_date))}}</span>
-                    <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                    <span>{{date('Y',strtotime($item->event->start_date))}}</span>
-                    </p>
-                </td>
-                <td class="show-name" align="center"><h2>{{$item->event->name}}</h2></td>
-            </tr>
-            <tr>
-                
-                <td align="center" class="show-name">
-                    <h1>{{$item->event->name}}</h1>
-                    <h2>{{$item->name}}</h2>
-                    <h2>{{$item->ticket->name}}</h2>
-                    <span class="card-ticket">{{$item->ticket->description}}</span>
-                    <p class="time">{{date('H:i',strtotime($item->event->start_time))}}</p>
-
-                </td>
-                <td align="center">
-                    <div class="time">
-                        <p>{{date('H:i',strtotime($item->event->start_time))}}<span>ATÉ</span> {{date('H:i',strtotime($item->event->end_time))}}</p>
-                        {{-- <p>DOORS <span>@</span> {{date('H:i',strtotime($item->event->start_time))}}</p> --}}
-                    </div>
-                    <div class="barcode">
-                        @php
-                            $myJSON = $item->qrcode ?: json_encode([
-                                's' => $item->status,
-                                'i' => $item->id,
-                                'ie' => $item->event->id,
-                            ]);
-                        @endphp
-                        <img src="data:image/png;base64, {!! base64_encode(QrCode::format('svg')->size(120)->generate($myJSON)) !!}">
-                        <p class="ticket-number2">
-                            {{ $item->ticket_number ?: '#0'.$item->id }}
-                        </p>
-                        {{-- {!!QrCode::generate($myJSON);!!} --}}
-                    </div>
-                </td>
-            </tr>
-           
-           
-         
-            <tr>
-                
-                <td align="center">
-                    <p class="location"><span>{{$item->event->address}},</span>
-                        <span>{{$item->event->province->name}}, Moçambique</span>
-                    </p>
-                </td>
-                
-            </tr>
-        </table>
-        
-    </div>
-    <br>
-    <br>
-    <br>
-    @php
-    $i = $i + 1;
-    @endphp
-    @endforeach
-
-
-
-   
-    
-</body>
-</html>
-
-
-{{-- <!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Mticket</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css">
-    <link rel="stylesheet" href="./style.css"> 
-
-</head>
-
-<style>
-/* @import url("https://fonts.googleapis.com/css2?family=Open+Sans&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Staatliches&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap"); */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body,
-html {
-    height: 100vh;
-    display: grid;
-    font-family: "Staatliches", cursive;
-    background: #ffff;
-    color: black;
-    font-size: 14px;
-    letter-spacing: 0.1em;
-    margin: 10px;
-}
-
-.ticket {
-    margin: auto;
-    display: flex;
-    background: white;
-    box-shadow: rgba(0, 0, 0, 0.3) 0px 19px 38px, rgba(0, 0, 0, 0.22) 0px 15px 12px;
-}
-
-.left {
-    display: flex;
-}
-
-.image {
-    height: 250px;
-    width: 250px;
-    background-image: url("/storage/{{$event->image}}");
-    background-size: contain;
-    opacity: 0.85;
-}
-
-.admit-one {
-    position: absolute;
-    color: darkgray;
-    height: 250px;
-    padding: 0 10px;
-    letter-spacing: 0.15em;
-    display: flex;
-    text-align: center;
-    justify-content: space-around;
-    writing-mode: vertical-rl;
-    transform: rotate(-180deg);
-}
-
-.admit-one span:nth-child(2) {
-    color: white;
-    font-weight: 700;
-}
-
-.left .ticket-number {
-    height: 250px;
-    width: 250px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: flex-end;
-    padding: 5px;
-}
-
-.ticket-info {
-    padding: 10px 30px;
-    display: flex;
-    flex-direction: column;
-    text-align: center;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.date {
-    border-top: 1px solid gray;
-    border-bottom: 1px solid gray;
-    padding: 5px 0;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-}
-
-.date span {
-    width: 100px;
-}
-
-.date span:first-child {
-    text-align: left;
-}
-
-.date span:last-child {
-    text-align: right;
-}
-
-.date .june-29 {
-    color: #d83565;
-    font-size: 20px;
-}
-
-.show-name {
-    font-size: 20px;
-    font-family: "Open Sans", cursive;
-    color: #d83565;
-}
-
-.show-name h1 {
-    font-size: 38px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    /* color: #04aff4; */
-    color: black;
-}
-
-.time {
-    padding: 10px 0;
-    /* color: #04aff4; */
-    color: black;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    font-weight: 700;
-}
-
-.time span {
-    font-weight: 400;
-    color: gray;
-}
-
-.left .time {
-    font-size: 16px;
-}
-
-.location {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    width: 100%;
-    padding-top: 8px;
-    border-top: 1px solid gray;
-}
-
-.location .separator {
-    font-size: 20px;
-}
-
-.right {
-    width: 180px;
-    border-left: 1px dashed #404040;
-}
-
-.right .admit-one {
-    color: darkgray;
-}
-
-.right .admit-one span:nth-child(2) {
-    color: gray;
-}
-
-.right .right-info-container {
-    height: 250px;
-    padding: 10px 10px 10px 35px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
-    align-items: center;
-}
-
-.right .show-name h1 {
-    font-size: 18px;
-}
-
-.barcode {
-    height: 100px;
-}
-
-.barcode img {
-    height: 100%;
-}
-
-.right .ticket-number {
-    color: gray;
-}
-
-.cardticket {
-   
-    align-items: center;
-    padding: 10px 30px;
-    display: flex;
-    flex-direction: column;
-    text-align: center;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 50ch;
-
-}
-
-.cardticket p {
-    color: black
-}
-</style>
-
 @php
-    $i = 1;
+    $months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    $eventImage = \App\Support\TicketPdf::eventImageDataUri($event->image ?? null);
 @endphp
 
 @foreach ($detail as $item)
-    
+    @php
+        $evt = $item->event ?? $event;
+        $startDate = $evt->start_date ? strtotime($evt->start_date) : null;
+        $dateLabel = $startDate
+            ? date('d', $startDate).' '.$months[((int) date('n', $startDate)) - 1].' '.date('Y', $startDate)
+            : '—';
+        $startTime = $evt->start_time ? date('H:i', strtotime($evt->start_time)) : '—';
+        $endTime = $evt->end_time ? date('H:i', strtotime($evt->end_time)) : null;
+        $timeLabel = ($startTime !== '—' && $endTime) ? $startTime.' – '.$endTime : $startTime;
+        $location = collect([$evt->address ?? null, $evt->city->name ?? null, $evt->province->name ?? null, 'Moçambique'])
+            ->filter()
+            ->implode(', ') ?: 'Local a anunciar';
+        $code = $item->ticket_number ?: '#0'.$item->id;
+        $buyer = $item->sell->name ?? $item->name ?? 'Cliente';
+        $price = number_format((float) ($item->sell->price ?? $item->price ?? 0), 0, ',', '.').' MT';
+        $qrPayload = $item->qrcode ?: json_encode([
+            's' => $item->status,
+            'i' => $item->id,
+            'ie' => $evt->id,
+        ]);
+        $qrMarkup = \App\Support\TicketPdf::qrMarkup($qrPayload);
+        $itemImage = $eventImage;
+        if (($evt->image ?? null) && $evt->image !== ($event->image ?? null)) {
+            $itemImage = \App\Support\TicketPdf::eventImageDataUri($evt->image);
+        }
+    @endphp
 
-<body>
-    <!-- partial:index.partial.html -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
-
-    <div class="ticket">
-        <div class="left">
-            <div class="image">
-                <p class="admit-one">
-                    <span>Mticket</span>
-                    <span>Mticket</span>
-                    <span>Mticket</span>
-                </p>
-                <div class="ticket-number">
-                    <p>
-                        #0{{$item->id}}
-                    </p>
-                </div>
-            </div>
-            <div class="ticket-info">
-                <p class="date">
-                    <span>{{date('l',strtotime($item->event->start_date))}}</span>
-                    <span class="june-29">{{date('d-m',strtotime($item->event->start_date))}}</span>
-                    <span>{{date('Y',strtotime($item->event->start_date))}}</span>
-                </p>
-                <div class="show-name">
-                    <h1>{{$item->event->name}}</h1>
-                    <br>
-                    <h2>{{Auth::user()->name}}</h2>
-                    <h2>{{$item->ticket->name}}</h2>
-                    <div class="cardticket">
-                        <p>{{$item->ticket->description}}</p>
+    <div class="page">
+        <table class="ticket" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+                <td class="col-image">
+                    <table width="100%" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td style="padding:0; height:175px; background-color:#0a2540;">
+                                @if ($itemImage)
+                                    <img src="{{ $itemImage }}" width="210" height="175" style="display:block;" alt="">
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="background-color:#0a2540; color:#ffffff; padding:10px 12px 12px;">
+                                <div class="brand">• MTicket</div>
+                                <div class="event-title">{{ $evt->name }}</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="col-info">
+                    <table cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td class="logo-mark">M</td>
+                            <td class="logo-text">M<span>Ticket</span></td>
+                        </tr>
+                    </table>
+                    <div class="slogan">Crie Momentos e Aproxime Pessoas.</div>
+                    <div class="eyebrow">EVENTO</div>
+                    <div class="event-name">{{ $evt->name }}</div>
+                    <table class="info-table" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td>
+                                <div class="info-label">Data</div>
+                                <div class="info-value">{{ $dateLabel }}</div>
+                            </td>
+                            <td>
+                                <div class="info-label">Hora</div>
+                                <div class="info-value">{{ $timeLabel }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <div class="info-label">Local</div>
+                                <div class="info-value">{{ $location }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="info-label">Tipo de bilhete</div>
+                                <div class="info-value">{{ $item->ticket->name ?? '—' }}</div>
+                            </td>
+                            <td>
+                                <div class="info-label">Comprador</div>
+                                <div class="info-value">{{ $buyer }}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="info-label">Preço</div>
+                                <div class="info-value">{{ $price }}</div>
+                            </td>
+                            <td>
+                                <div class="badge">BILHETE VÁLIDO</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="col-qr">
+                    <div class="qr-caption">CÓDIGO DO BILHETE</div>
+                    <div class="qr-code-id">{{ $code }}</div>
+                    <div class="qr-box">
+                        {!! $qrMarkup !!}
                     </div>
-                    
-                </div>
-                <div class="time">
-
-                    <p>{{date('H:i',strtotime($item->event->start_time))}}</p>
-                </div>
-                <p class="location"><span>{{$item->event->address}}</span>
-                    <span class="separator"> 
-                    @if ($item->status == 0)
-                        <i class="fas fa-frown" style="color:red"></i>
-                    @else
-                        <i class="fas fa-smile" style="color:green"></i>
-                    @endif  
-                    </span><span>{{$item->event->province->name}}, Moçambique</span>
-                </p>
-            </div>
-        </div>
-        <div class="right">
-            <p class="admit-one">
-                <span>Mticket</span>
-                <span>Mticket</span>
-                <span>Mticket</span>
-            </p>
-            <div class="right-info-container">
-                <div class="show-name">
-                    <h1>{{$item->event->name}}</h1>
-
-                </div>
-                <div class="time">
-                    <p>{{date('H:i',strtotime($item->event->start_time))}}<span>ATÉ</span> {{date('H:i',strtotime($item->event->end_time))}}</p>
-                </div>
-                <div class="barcode">
-                    @php
-                        $myJSON = $item->qrcode ?: json_encode([
-                            's' => $item->status,
-                            'i' => $item->id,
-                            'ie' => $item->event->id,
-                        ]);
-                    @endphp
-                    {!! QrCode::size(120)->generate($myJSON) !!}
-                </div>
-                <p class="ticket-number">
-                    {{ $item->ticket_number ?: '#0'.$item->id }}
-                </p>
-            </div>
-        </div>
+                    <div class="qr-instruction">APONTE O QR CODE NA ENTRADA</div>
+                    <div class="qr-subtext">Bilhete digital<br>Apresente o QR Code na entrada</div>
+                </td>
+            </tr>
+        </table>
     </div>
-    <!-- partial -->
-    <script src="./script.js"></script>
-
-</body>
-
-<br>
-
-@php
-    $i = $i + 1;
-@endphp
 @endforeach
-
-
-</html> --}}
+</body>
+</html>

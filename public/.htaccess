@@ -7,6 +7,9 @@
 
     CGIPassAuth On
 
+    # Ticket PDFs are served only via signed Laravel URLs.
+    RewriteRule ^storage/tickets/ - [F,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

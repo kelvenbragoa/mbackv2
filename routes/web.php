@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\GlobalController;
 use App\Http\Controllers\OpenGraphController;
+use App\Http\Controllers\TicketDownloadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -13,6 +14,11 @@ Route::get('/', function () {
 Route::get('og/eventos/{slug}', [OpenGraphController::class, 'event'])->where('slug', '[A-Za-z0-9._-]+');
 Route::get('og/p/{slug}', [OpenGraphController::class, 'promotor'])->where('slug', '[A-Za-z0-9._-]+');
 Route::get('og/imagem/{token}', [OpenGraphController::class, 'image'])->where('token', '[A-Za-z0-9_-]+');
+
+Route::get('tickets/{sell}/ticket.pdf', [TicketDownloadController::class, 'show'])
+    ->middleware(['signed', 'throttle:60,1'])
+    ->whereNumber('sell')
+    ->name('tickets.download');
 
 // Route::get('sendtwilio',[GlobalController::class,'sendtwilio']);
 

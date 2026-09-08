@@ -13,10 +13,11 @@ use App\Models\TemporaryTransaction;
 use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Notifications\TicketPaid;
+use App\Support\TicketFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -359,6 +360,66 @@ class UserCheckOutController extends Controller
         //
     }
 
+    /**
+     * Recebe o PDF gerado no browser (mesmo visual de encomenda / meus bilhetes)
+     * e envia por email em memória, sem passar pelo DomPDF.
+     */
+    public function emailTicket(Request $request)
+    {
+        $data = $request->validate([
+            'sell_id' => ['required', 'integer'],
+            'email' => ['required', 'email'],
+            'pdf' => ['required', 'file', 'max:10240'],
+        ]);
+
+        $sell = Sell::with(['event', 'ticket'])->find($data['sell_id']);
+        if (! $sell || strcasecmp((string) $sell->email, $data['email']) !== 0) {
+            return response()->json(['message' => 'Encomenda não encontrada.'], 404);
+        }
+
+        if ($this->isLiveSell($sell)) {
+            return response()->json(['message' => 'Acesso live não envia PDF.'], 422);
+        }
+
+        $cacheKey = 'ticket-mail-sent:'.$sell->id;
+        if (! Cache::add($cacheKey, 1, now()->addDay())) {
+            return response()->json(['ok' => true, 'already' => true]);
+        }
+
+        $pdfBinary = file_get_contents($request->file('pdf')->getRealPath());
+        if ($pdfBinary === false || $pdfBinary === '' || ! str_starts_with($pdfBinary, '%PDF')) {
+            Cache::forget($cacheKey);
+
+            return response()->json(['message' => 'PDF inválido.'], 422);
+        }
+
+        $event = $sell->event;
+        if (! $event) {
+            Cache::forget($cacheKey);
+
+            return response()->json(['message' => 'Evento não encontrado.'], 422);
+        }
+
+        $msg = "Olá, {$sell->name}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
+        $detail = SellDetails::where('sell_id', $sell->id)->get();
+
+        try {
+            Mail::to($sell->email)->send(new SendTickets($detail, $event->id, $sell->id, $msg, $pdfBinary));
+
+            if ($sell->mobile) {
+                TicketFile::put((int) $sell->id, $pdfBinary);
+                $this->sendwhatsapp($sell->mobile, $sell->id);
+            }
+        } catch (\Throwable $th) {
+            Cache::forget($cacheKey);
+            Log::error($th->getMessage());
+
+            return response()->json(['message' => 'Não foi possível enviar o bilhete.'], 500);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
     public function sendwhatsapp($number,$sell_id){
         try {
             $url = $this->ticketdownload($sell_id);
@@ -397,18 +458,7 @@ class UserCheckOutController extends Controller
     }
 
     public function ticketdownload($id){
-
-        $sell = Sell::find($id);
-        $detail = SellDetails::where('sell_id',$id)->get();
-        $event = Event::find($sell->event_id);
-
-
-        $pdf = PDF::loadView('pdf.ticket', compact('detail','event'));
-        $fileName = 'ticket-'.$id.'.pdf';
-        $pdf->save(storage_path('app/public/tickets/'.$fileName));
-
-        return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
-
+        return TicketFile::temporaryUrl((int) $id);
     }
 
     private function assertLiveTicketsRequireLogin(Request $request, array $tickets): ?\App\Models\User
@@ -567,17 +617,6 @@ class UserCheckOutController extends Controller
             return;
         }
 
-        $msg_content = "Olá, {$data['customerName']}. A sua compra para o evento {$event->name} foi realizada com sucesso. Segue o seu bilhete em anexo.";
-        $detail = SellDetails::where('sell_id', $physical->id)->get();
-
-        try {
-            Log::info('Enviando email para: ' . $data['customerEmail']);
-            Mail::to($data['customerEmail'])->send(new SendTickets($detail, $event->id, $physical->id, $msg_content));
-            Log::info('Email enviado com sucesso para: ' . $data['customerEmail']);
-            $this->sendwhatsapp($data['customerMobile'], $physical->id);
-            Log::info('Whatsapp enviado com sucesso para: ' . $data['customerMobile']);
-        } catch (\Throwable $th) {
-            Log::error($th->getMessage());
-        }
+        Log::info('Email e WhatsApp do PDF da web adiados para a página de encomenda. Sell '.$physical->id);
     }
 }

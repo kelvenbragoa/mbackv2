@@ -13,9 +13,9 @@ use App\Models\TemporaryTransaction;
 use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Notifications\TicketPaid;
+use App\Support\TicketFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
@@ -405,18 +405,7 @@ class ClientCheckOutController extends Controller
     }
 
     public function ticketdownload($id){
-
-        $sell = Sell::find($id);
-        $detail = SellDetails::where('sell_id',$id)->get();
-        $event = Event::find($sell->event_id);
-
-
-        $pdf = PDF::loadView('pdf.ticket', compact('detail','event'));
-        $fileName = 'ticket-'.$id.'.pdf';
-        $pdf->save(storage_path('app/public/tickets/'.$fileName));
-
-        return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
-
+        return TicketFile::temporaryUrl((int) $id);
     }
 
     /**

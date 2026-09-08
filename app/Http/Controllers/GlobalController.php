@@ -10,11 +10,10 @@ use App\Models\Sell;
 use App\Models\SellDetails;
 use App\Models\User;
 use App\Notifications\TicketPaid;
+use App\Support\TicketFile;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
-use Twilio\Rest\Client;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
@@ -129,17 +128,7 @@ class GlobalController extends BaseController
 
 
         public function ticketdownload($id){
-
-            $sell = Sell::find($id);
-            $detail = SellDetails::where('sell_id',$id)->get();
-            $event = Event::find($sell->event_id);
-
-            $pdf = PDF::loadView('pdf.ticket', compact('detail','event'));
-            $fileName = 'ticket-'.$id.'.pdf';
-            $pdf->save(storage_path('app/public/tickets/'.$fileName));
-
-            return 'https://backend.mticket.co.mz/storage/tickets/ticket-'.$id.'.pdf';
-
+            return TicketFile::temporaryUrl((int) $id);
         }
 
 
