@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Cache;
 
 class TicketFile
 {
@@ -65,16 +65,22 @@ class TicketFile
         return true;
     }
 
+    public static function sellIdFromToken(string $token): ?int
+    {
+        $sellId = Cache::get('ticket-dl:'.$token);
+
+        return $sellId ? (int) $sellId : null;
+    }
+
     public static function temporaryUrl(int $sellId, ?string $binary = null): ?string
     {
         if (! self::ensure($sellId, $binary)) {
             return null;
         }
 
-        return URL::temporarySignedRoute(
-            'tickets.download',
-            now()->addMinutes(self::TTL_MINUTES),
-            ['sell' => $sellId]
-        );
+        $token = bin2hex(random_bytes(32));
+        Cache::put('ticket-dl:'.$token, $sellId, now()->addMinutes(self::TTL_MINUTES));
+
+        return rtrim((string) config('app.url'), '/').'/api/ticket-files/'.$token.'/ticket.pdf';
     }
 }

@@ -22,6 +22,9 @@ class MediaController extends Controller
         return response()->file($fullPath, [
             'Content-Type' => $mime,
             'Cache-Control' => 'public, max-age=86400',
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+            'Cross-Origin-Resource-Policy' => 'cross-origin',
         ]);
     }
 }

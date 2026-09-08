@@ -15,9 +15,9 @@ Route::get('og/eventos/{slug}', [OpenGraphController::class, 'event'])->where('s
 Route::get('og/p/{slug}', [OpenGraphController::class, 'promotor'])->where('slug', '[A-Za-z0-9._-]+');
 Route::get('og/imagem/{token}', [OpenGraphController::class, 'image'])->where('token', '[A-Za-z0-9_-]+');
 
-Route::get('tickets/{sell}/ticket.pdf', [TicketDownloadController::class, 'show'])
-    ->middleware(['signed', 'throttle:60,1'])
-    ->whereNumber('sell')
+Route::get('tickets/{token}/ticket.pdf', [TicketDownloadController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->where('token', '[a-f0-9]{64}')
     ->name('tickets.download');
 
 // Route::get('sendtwilio',[GlobalController::class,'sendtwilio']);
