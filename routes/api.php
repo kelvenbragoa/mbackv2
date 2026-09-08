@@ -68,6 +68,7 @@ Route::get('promotores/{slug}', [UserPromotorPageController::class, 'show']);
 Route::get('apps', [StoreAppsController::class, 'index']);
 Route::get('apps/{slug}/latest', [StoreAppsController::class, 'latest']);
 Route::get('generate-slug', [GlobalController::class, 'generateSlugs']);
+Route::get('media', [MediaController::class, 'show'])->middleware('throttle:60,1');
 Route::get('media/{path}', [MediaController::class, 'show'])->where('path', '.*')->middleware('throttle:60,1');
 Route::get('ticket-files/{token}/ticket.pdf', [\App\Http\Controllers\TicketDownloadController::class, 'show'])
     ->middleware('throttle:60,1')
