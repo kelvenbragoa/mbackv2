@@ -407,8 +407,7 @@ class UserCheckOutController extends Controller
             Mail::to($sell->email)->send(new SendTickets($detail, $event->id, $sell->id, $msg, $pdfBinary));
 
             if ($sell->mobile) {
-                TicketFile::put((int) $sell->id, $pdfBinary);
-                $this->sendwhatsapp($sell->mobile, $sell->id);
+                $this->sendwhatsapp($sell->mobile, $sell->id, $pdfBinary);
             }
         } catch (\Throwable $th) {
             Cache::forget($cacheKey);
@@ -420,11 +419,15 @@ class UserCheckOutController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function sendwhatsapp($number,$sell_id){
+    public function sendwhatsapp($number, $sell_id, ?string $pdfBinary = null)
+    {
         try {
-            $url = $this->ticketdownload($sell_id);
-            $ticket = new TicketPaid($url,$sell_id,$number);
-            Notification::send($number,$ticket);
+            $url = TicketFile::temporaryUrl((int) $sell_id, $pdfBinary);
+            if (! $url) {
+                return null;
+            }
+            $ticket = new TicketPaid($url, $sell_id, $number);
+            Notification::send($number, $ticket);
         } catch (Exception $e) {
             return $e;
         }

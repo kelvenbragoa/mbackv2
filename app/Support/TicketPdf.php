@@ -52,7 +52,10 @@ class TicketPdf
 
     public static function eventImageDataUri(?string $path): string
     {
-        $path = ltrim((string) $path, '/');
+        $path = ltrim(str_replace('\\', '/', (string) $path), '/');
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
         if ($path === '') {
             return '';
         }
@@ -62,9 +65,44 @@ class TicketPdf
             return '';
         }
 
+        $bytes = (string) file_get_contents($full);
+        if ($bytes === '') {
+            return '';
+        }
+
+        $jpeg = self::toJpegBytes($bytes);
+        if ($jpeg !== '') {
+            return 'data:image/jpeg;base64,'.base64_encode($jpeg);
+        }
+
         $mime = mime_content_type($full) ?: 'image/jpeg';
 
-        return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($full));
+        return 'data:'.$mime.';base64,'.base64_encode($bytes);
+    }
+
+    private static function toJpegBytes(string $bytes): string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return '';
+        }
+
+        $image = @imagecreatefromstring($bytes);
+        if ($image === false) {
+            return '';
+        }
+
+        $trueColor = imagecreatetruecolor(imagesx($image), imagesy($image));
+        $white = imagecolorallocate($trueColor, 255, 255, 255);
+        imagefill($trueColor, 0, 0, $white);
+        imagecopy($trueColor, $image, 0, 0, 0, 0, imagesx($image), imagesy($image));
+        imagedestroy($image);
+
+        ob_start();
+        imagejpeg($trueColor, null, 86);
+        $jpeg = (string) ob_get_clean();
+        imagedestroy($trueColor);
+
+        return $jpeg;
     }
 
     public static function qrMarkup(string $payload): string

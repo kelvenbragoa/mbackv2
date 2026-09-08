@@ -60,7 +60,7 @@ class TicketPaid extends Notification
 
         return WhatsAppTemplate::create()
             ->name('purchase_receipt_1')
-            ->header(Component::document($url))
+            ->header(Component::document($url, 'bilhete.pdf'))
             ->body(Component::text($amount))
             ->body(Component::text($from))
             ->body(Component::text($document))

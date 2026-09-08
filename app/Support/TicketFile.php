@@ -38,6 +38,12 @@ class TicketFile
 
     public static function ensure(int $sellId, ?string $binary = null): bool
     {
+        if (is_string($binary) && $binary !== '' && str_starts_with($binary, '%PDF')) {
+            self::put($sellId, $binary);
+
+            return true;
+        }
+
         if (is_file(self::path($sellId))) {
             return true;
         }
@@ -45,12 +51,6 @@ class TicketFile
         $legacy = self::legacyPath($sellId);
         if (is_file($legacy)) {
             self::put($sellId, (string) file_get_contents($legacy));
-
-            return true;
-        }
-
-        if (is_string($binary) && $binary !== '') {
-            self::put($sellId, $binary);
 
             return true;
         }

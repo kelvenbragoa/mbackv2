@@ -367,11 +367,15 @@ class ClientCheckOutController extends Controller
         //
     }
 
-    public function sendwhatsapp($number,$sell_id){
+    public function sendwhatsapp($number, $sell_id, ?string $pdfBinary = null)
+    {
         try {
-            $url = $this->ticketdownload($sell_id);
-            $ticket = new TicketPaid($url,$sell_id,$number);
-            Notification::send($number,$ticket);
+            $url = TicketFile::temporaryUrl((int) $sell_id, $pdfBinary);
+            if (! $url) {
+                return null;
+            }
+            $ticket = new TicketPaid($url, $sell_id, $number);
+            Notification::send($number, $ticket);
         } catch (Exception $e) {
             return $e;
         }
