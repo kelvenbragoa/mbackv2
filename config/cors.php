@@ -17,17 +17,29 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', env(
+        'CORS_ALLOWED_ORIGINS',
+        'https://mticket.co.mz,https://www.mticket.co.mz,http://localhost:5173,http://127.0.0.1:5173'
+    ))))),
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'Accept',
+        'Authorization',
+        'Content-Type',
+        'Origin',
+        'X-Requested-With',
+        'X-CSRF-TOKEN',
+        'X-XSRF-TOKEN',
+        'X-Socket-Id',
+    ],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 600,
 
     'supports_credentials' => true,
 
