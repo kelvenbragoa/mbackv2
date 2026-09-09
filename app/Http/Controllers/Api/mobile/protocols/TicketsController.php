@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api\mobile\protocols;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\SellDetails;
+use App\Notifications\TicketConfirmed;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class TicketsController extends Controller
 {
@@ -100,9 +103,28 @@ class TicketsController extends Controller
             'verified_at' => now(),
         ]);
 
+        $this->notifyTicketUsed($ticket);
+
         return response([
             'message' => 'Bilhete Verificado Com sucesso',
         ], 200);
+    }
+
+    private function notifyTicketUsed(SellDetails $ticket): void
+    {
+        $ticket->refresh();
+        $ticket->loadMissing(['sell', 'event', 'verified_by_protocol']);
+
+        $mobile = trim((string) ($ticket->mobile ?: $ticket->sell?->mobile ?: ''));
+        if ($mobile === '') {
+            return;
+        }
+
+        try {
+            Notification::send($mobile, new TicketConfirmed((int) $ticket->id, $mobile));
+        } catch (\Throwable $th) {
+            Log::error('Falha a notificar uso do bilhete '.$ticket->id.': '.$th->getMessage());
+        }
     }
 
     public function status($id){
