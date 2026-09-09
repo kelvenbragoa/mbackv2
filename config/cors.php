@@ -24,7 +24,11 @@ return [
         'https://mticket.co.mz,https://www.mticket.co.mz,http://localhost:5173,http://127.0.0.1:5173'
     ))))),
 
-    'allowed_origins_patterns' => [],
+    // Páginas públicas {slug}.mticket.co.mz (promotores) — origem dinâmica.
+    'allowed_origins_patterns' => [
+        '#^https://[a-z0-9-]+\.mticket\.co\.mz$#i',
+        '#^http://[a-z0-9-]+\.localhost(:[0-9]+)?$#i',
+    ],
 
     'allowed_headers' => [
         'Accept',
