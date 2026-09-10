@@ -16,6 +16,11 @@ class TicketPdf
      */
     public const PAPER = [0, 0, 780, 278];
 
+    /**
+     * Same horizontal strip as the original ticket PDF (fills the page).
+     */
+    public const BOCA_PAPER = [0, 0, 780, 278];
+
     public static function make(Collection|array $details, Event $event)
     {
         return Pdf::loadView('pdf.ticket', [
@@ -23,18 +28,77 @@ class TicketPdf
             'event' => $event,
         ])
             ->setPaper(self::PAPER, 'portrait')
-            ->setOptions([
-                'defaultFont' => 'DejaVu Sans',
-                'isRemoteEnabled' => true,
-                'isHtml5ParserEnabled' => true,
-                'dpi' => 96,
-            ]);
+            ->setOptions(self::pdfOptions());
+    }
+
+    public static function makeBoca(Collection|array $details, Event $event)
+    {
+        return Pdf::loadView('pdf.ticket', [
+            'detail' => $details,
+            'event' => $event,
+        ])
+            ->setPaper(self::PAPER, 'portrait')
+            ->setOptions(self::pdfOptions());
+    }
+
+    public static function makeA4(Collection|array $details, Event $event)
+    {
+        return Pdf::loadView('pdf.batch-a4', [
+            'detail' => $details,
+            'event' => $event,
+        ])
+            ->setPaper('a4', 'portrait')
+            ->setOptions(self::pdfOptions());
+    }
+
+    private static function pdfOptions(): array
+    {
+        return [
+            'defaultFont' => 'DejaVu Sans',
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+            'dpi' => 96,
+        ];
     }
 
     public static function forSellId(int $sellId)
     {
-        $details = SellDetails::with(['event.province', 'event.city', 'ticket', 'sell'])
+        return self::forSellQuery(
+            SellDetails::with(['event.province', 'event.city', 'ticket', 'sell'])
+                ->where('sell_id', $sellId)
+        );
+    }
+
+    public static function forBatchSellId(int $sellId, string $layout = 'a4')
+    {
+        $details = self::batchDetails($sellId);
+        $event = $details->first()?->event;
+
+        if ($details->isEmpty() || ! $event) {
+            return null;
+        }
+
+        return $layout === 'boca'
+            ? self::makeBoca($details, $event)
+            : self::makeA4($details, $event);
+    }
+
+    private static function batchDetails(int $sellId): Collection
+    {
+        return SellDetails::with(['event.province', 'event.city', 'ticket', 'sell'])
             ->where('sell_id', $sellId)
+            ->where('status', SellDetails::STATUS_VALID)
+            ->orderBy('id')
+            ->get()
+            ->filter(function (SellDetails $detail) {
+                return ! ($detail->ticket && (int) $detail->ticket->is_live === 1);
+            })
+            ->values();
+    }
+
+    private static function forSellQuery($query)
+    {
+        $details = $query
             ->get()
             ->filter(function (SellDetails $detail) {
                 return ! ($detail->ticket && (int) $detail->ticket->is_live === 1);
@@ -105,14 +169,60 @@ class TicketPdf
         return $jpeg;
     }
 
-    public static function qrMarkup(string $payload): string
+    public static function qrMarkup(string $payload, int $size = 110): string
     {
-        try {
-            $png = QrCode::format('png')->size(140)->margin(1)->errorCorrection('H')->generate($payload);
+        $pngSize = max(80, (int) round($size * 1.25));
 
-            return '<img src="data:image/png;base64,'.base64_encode($png).'" width="110" height="110" alt="QR">';
+        try {
+            $png = QrCode::format('png')->size($pngSize)->margin(1)->errorCorrection('H')->generate($payload);
+
+            return '<img src="data:image/png;base64,'.base64_encode($png).'" width="'.$size.'" height="'.$size.'" alt="QR">';
         } catch (\Throwable) {
-            return (string) QrCode::size(110)->margin(1)->errorCorrection('H')->generate($payload);
+            return (string) QrCode::size($size)->margin(1)->errorCorrection('H')->generate($payload);
         }
+    }
+
+    /**
+     * Shared labels for physical print layouts (BOCA / A4).
+     */
+    public static function printTicketData(SellDetails $item, Event $fallbackEvent, string $eventImage): array
+    {
+        $months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+        $evt = $item->event ?? $fallbackEvent;
+        $startDate = $evt->start_date ? strtotime($evt->start_date) : null;
+        $dateLabel = $startDate
+            ? date('d', $startDate).' '.$months[((int) date('n', $startDate)) - 1].' '.date('Y', $startDate)
+            : '—';
+        $startTime = $evt->start_time ? date('H:i', strtotime($evt->start_time)) : '—';
+        $endTime = $evt->end_time ? date('H:i', strtotime($evt->end_time)) : null;
+        $timeLabel = ($startTime !== '—' && $endTime) ? $startTime.' – '.$endTime : $startTime;
+        $location = collect([$evt->address ?? null, $evt->city->name ?? null, $evt->province->name ?? null, 'Moçambique'])
+            ->filter()
+            ->implode(', ') ?: 'Local a anunciar';
+        $code = $item->ticket_number ?: 'MTK-'.$item->id;
+        $buyer = $item->sell->name ?? $item->name ?? 'Cliente';
+        $price = number_format((float) ($item->sell->price ?? $item->ticket?->price ?? 0), 0, ',', '.').' MT';
+        $qrPayload = $item->qrcode ?: json_encode([
+            's' => $item->status,
+            'i' => $item->id,
+            'ie' => $evt->id,
+        ]);
+        $itemImage = $eventImage;
+        if (($evt->image ?? null) && $evt->image !== ($fallbackEvent->image ?? null)) {
+            $itemImage = self::eventImageDataUri($evt->image);
+        }
+
+        return [
+            'evt' => $evt,
+            'dateLabel' => $dateLabel,
+            'timeLabel' => $timeLabel,
+            'location' => $location,
+            'code' => $code,
+            'buyer' => $buyer,
+            'price' => $price,
+            'ticketName' => $item->ticket?->name ?? '—',
+            'qrPayload' => $qrPayload,
+            'itemImage' => $itemImage,
+        ];
     }
 }

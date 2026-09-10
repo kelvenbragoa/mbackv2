@@ -60,7 +60,10 @@ class PromotorTicketController extends Controller
     public function show(string $id)
     {
         //
-        $ticket = Ticket::with('formFields')->find($id);
+        $ticket = Ticket::with('formFields')->withCount('stockSells as sells_count')->find($id);
+        if ($ticket) {
+            $ticket->available_quantity = $ticket->availableQuantity();
+        }
 
         return response()->json(["ticket"=>$ticket]);
     }

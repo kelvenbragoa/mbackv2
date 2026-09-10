@@ -18,7 +18,7 @@ class ProductsController extends Controller
         $event = Event::find($id);
 
         $products = Ticket::where('event_id', $event->id)
-            ->withCount('sells')
+            ->withCount('stockSells as sells_count')
             ->orderBy('name', 'asc')
             ->get()
             ->transform(function ($item) {
@@ -34,7 +34,7 @@ class ProductsController extends Controller
 
     public function productdetail(Request $request, $id)
     {
-        $ticket = Ticket::withCount('sells')->find($id);
+        $ticket = Ticket::withCount('stockSells as sells_count')->find($id);
         if (! $ticket) {
             return response([
                 'product' => [],

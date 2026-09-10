@@ -11,10 +11,29 @@ class SellDetails extends Model
     use HasFactory;
     protected $guarded = [];
 
+    public const STATUS_USED = 0;
+    public const STATUS_VALID = 1;
+    public const STATUS_RETURNED = 2;
+
     protected $casts = [
         'form_answers' => 'array',
         'verified_at' => 'datetime',
     ];
+
+    public function scopeConsumingStock($query)
+    {
+        return $query->where('status', '!=', self::STATUS_RETURNED);
+    }
+
+    public function isValid(): bool
+    {
+        return (int) $this->status === self::STATUS_VALID && $this->verified_at === null;
+    }
+
+    public function isReturned(): bool
+    {
+        return (int) $this->status === self::STATUS_RETURNED;
+    }
 
     protected static function booted(): void
     {

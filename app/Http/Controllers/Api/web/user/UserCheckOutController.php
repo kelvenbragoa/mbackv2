@@ -322,7 +322,7 @@ class UserCheckOutController extends Controller
             ->with(['formFields' => function ($query) {
                 $query->orderBy('sort_order')->orderBy('id');
             }])
-            ->withCount('sells')
+            ->withCount('stockSells as sells_count')
             ->get()
             ->transform(function ($item) {
                 $item->quantity = 0;

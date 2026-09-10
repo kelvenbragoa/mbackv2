@@ -91,14 +91,20 @@ class TicketsController extends Controller
             ], 422);
         }
 
-        if ((int) $ticket->status === 0 || $ticket->verified_at !== null) {
+        if ($ticket->isReturned()) {
+            return response([
+                'message' => 'Este bilhete foi devolvido e já não é válido.',
+            ], 422);
+        }
+
+        if ((int) $ticket->status !== SellDetails::STATUS_VALID || $ticket->verified_at !== null) {
             return response([
                 'message' => 'Este bilhete já foi verificado.',
             ], 409);
         }
 
         $ticket->update([
-            'status' => 0,
+            'status' => SellDetails::STATUS_USED,
             'verified_by' => $userid,
             'verified_at' => now(),
         ]);

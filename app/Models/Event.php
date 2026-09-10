@@ -100,6 +100,12 @@ class Event extends Model
         return $this->hasMany('App\Models\SellDetails', 'event_id', 'id');
     }
 
+    public function sold_details()
+    {
+        return $this->hasMany(SellDetails::class, 'event_id', 'id')
+            ->where('status', '!=', SellDetails::STATUS_RETURNED);
+    }
+
     public function live()
     {
         return $this->hasOne(Live::class, 'event_id', 'id');

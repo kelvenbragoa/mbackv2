@@ -32,7 +32,7 @@ class AdminEventsController extends Controller
                 $query->where('province_id', $provinceId);
             })
             ->with(['city', 'province', 'category', 'status', 'type', 'user'])
-            ->withCount('sell_details as tickets_sold')
+            ->withCount('sold_details as tickets_sold')
             ->withSum(['sells as revenue' => function ($query) {
                 $query->where('status', 1);
             }], 'total')

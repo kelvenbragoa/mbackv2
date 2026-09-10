@@ -26,6 +26,12 @@ class Ticket extends Model
         return $this->hasMany('App\Models\SellDetails', 'ticket_id', 'id');
     }
 
+    public function stockSells()
+    {
+        return $this->hasMany(SellDetails::class, 'ticket_id', 'id')
+            ->where('status', '!=', SellDetails::STATUS_RETURNED);
+    }
+
     public function formFields()
     {
         return $this->hasMany(TicketFormField::class, 'ticket_id', 'id')->orderBy('sort_order')->orderBy('id');
@@ -40,10 +46,12 @@ class Ticket extends Model
     {
         if (array_key_exists('sells_count', $this->attributes)) {
             $sold = (int) $this->attributes['sells_count'];
+        } elseif ($this->relationLoaded('stockSells')) {
+            $sold = $this->stockSells->count();
         } elseif ($this->relationLoaded('sells')) {
-            $sold = $this->sells->count();
+            $sold = $this->sells->where('status', '!=', SellDetails::STATUS_RETURNED)->count();
         } else {
-            $sold = $this->sells()->count();
+            $sold = $this->stockSells()->count();
         }
 
         return max(0, (int) $this->max_qtd - $sold);

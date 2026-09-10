@@ -34,4 +34,25 @@ class Sell extends Model
         return $this->hasOne('App\Models\Transaction', 'sell_id', 'id');
     }
 
+    /**
+     * Where the sale happened. Derived from existing columns (no extra table).
+     * online | lote | box_office
+     */
+    public function saleChannel(): string
+    {
+        if (! empty($this->protocol_id) && (int) $this->protocol_id > 0) {
+            return 'box_office';
+        }
+
+        $method = $this->relationLoaded('transaction')
+            ? $this->transaction?->method
+            : $this->transaction()->value('method');
+
+        if ($method === 'lote') {
+            return 'lote';
+        }
+
+        return 'online';
+    }
+
 }
