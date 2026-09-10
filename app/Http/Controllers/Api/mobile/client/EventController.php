@@ -22,8 +22,7 @@ class EventController extends BaseController
             $categoryId = $request->get('category_id');
 
             $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like',
-            // ])->whereIn('status_id', [1,2,3]); // Assumindo que status 1 é ativo
+                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
             ])->where('status_id', 2);
 
             if ($categoryId) {
@@ -67,8 +66,7 @@ class EventController extends BaseController
             $limit = min($request->get('limit', 20), 100);
 
             $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
-            // ])->whereIn('status_id', [1,2,3])
+                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
             ])->where('status_id', 2)
               ->where('start_date', '>=', now()->format('Y-m-d'));
 
@@ -110,7 +108,7 @@ class EventController extends BaseController
             $limit = min((int) $request->get('limit', 200), 300);
 
             $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like',
+                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
             ])
                 // ->whereIn('status_id', [1, 2, 3])
                 ->where('status_id', 2)
@@ -155,8 +153,7 @@ class EventController extends BaseController
     {
         try {
             $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
-            // ])->whereIn('status_id', [1,2,3]);
+                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
             ])->where('status_id', 2);
 
             // Filtro por texto
@@ -184,6 +181,10 @@ class EventController extends BaseController
                 $query->whereHas('province', function (Builder $q) use ($state) {
                     $q->where('name', 'like', "%{$state}%");
                 });
+            }
+
+            if ($organizerId = $request->get('organizer_id')) {
+                $query->where('user_id', $organizerId);
             }
 
             // Filtro por data
@@ -342,7 +343,7 @@ class EventController extends BaseController
     {
         try {
             $event = Event::with([
-                'category', 'city', 'province', 'tickets.sells', 'tickets.formFields', 'sells', 'review', 'like', 'lineups'
+                'category', 'city', 'province', 'tickets.sells', 'tickets.formFields', 'sells', 'review', 'like', 'lineups', 'user',
             ])->find($id);
 
             if (!$event) {
@@ -432,7 +433,7 @@ class EventController extends BaseController
 
             // Buscar eventos favoritos com relacionamentos usando leftJoin para evitar ambiguidade
             $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
+                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
             ])
             ->leftJoin('favorite_events', 'events.id', '=', 'favorite_events.event_id')
             ->where('favorite_events.user_id', $user->id)

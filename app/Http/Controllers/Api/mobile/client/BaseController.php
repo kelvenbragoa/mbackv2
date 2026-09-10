@@ -108,11 +108,16 @@ class BaseController extends Controller
             'total_reviews' => $event->review->count()
         ];
 
+        $organizer = $event->user;
+        $organizerName = $organizer?->company_name ?: $organizer?->name;
+
         return [
             'id' => $event->id,
             'slug' => $event->slug,
             'title' => $event->name,
-            'user' => $event->user->name,
+            'user' => $organizerName,
+            'organizer_id' => $organizer?->id ?? $event->user_id,
+            'organizer_slug' => $organizer?->slug,
             'description' => $event->description,
             'short_description' => Str::limit($event->description, 100),
             'image_url' => $event->image ? asset('storage/' . $event->image) : null,
