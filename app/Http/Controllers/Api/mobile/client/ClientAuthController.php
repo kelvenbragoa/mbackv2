@@ -187,7 +187,7 @@ class ClientAuthController extends Controller
 
         $user->name = 'Conta eliminada';
         $user->email = "deleted_{$suffix}@deleted.local";
-        $user->mobile = '842648618';
+        $user->mobile = '000000'.$user->id;
         $user->address = null;
         $user->bi = null;
         $user->image = null;
