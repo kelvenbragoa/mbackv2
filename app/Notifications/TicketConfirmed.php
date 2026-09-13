@@ -42,7 +42,7 @@ class TicketConfirmed extends Notification
         );
 
         return WhatsAppTemplate::create()
-            ->name('appointment_confirmed')
+            ->name('ticket_confirmed')
             // ->language('en_US')
             ->body(Component::text($registrar))
             ->body(Component::text($confirmedAt))

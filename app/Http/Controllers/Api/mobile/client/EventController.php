@@ -80,7 +80,7 @@ class EventController extends BaseController
                 }
             }
 
-            $events = $query->orderBy('start_date', 'asc')->paginate($limit);
+            $events = $query->orderBy('start_date', 'desc')->paginate($limit);
 
             $formattedEvents = $events->getCollection()->map(function ($event) {
                 return $this->formatEvent($event, Auth::id());
@@ -131,7 +131,7 @@ class EventController extends BaseController
                 $query->where('city_id', $cityId);
             }
 
-            $events = $query->orderBy('start_date', 'asc')->limit($limit)->get();
+            $events = $query->orderBy('start_date', 'desc')->limit($limit)->get();
 
             $formattedEvents = $events->map(function ($event) {
                 return $this->formatEvent($event, Auth::id());
@@ -225,7 +225,7 @@ class EventController extends BaseController
                     $query->withCount('like')->orderBy('like_count', $sortOrder);
                     break;
                 default:
-                    $query->orderBy('start_date', 'asc');
+                    $query->orderBy('start_date', 'desc');
             }
 
             $perPage = min($request->get('per_page', 20), 100);

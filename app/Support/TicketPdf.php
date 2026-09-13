@@ -4,9 +4,10 @@ namespace App\Support;
 
 use App\Models\Event;
 use App\Models\SellDetails;
+use BaconQrCode\Common\ErrorCorrectionLevel;
+use BaconQrCode\Encoder\Encoder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class TicketPdf
 {
@@ -171,15 +172,70 @@ class TicketPdf
 
     public static function qrMarkup(string $payload, int $size = 110): string
     {
-        $pngSize = max(80, (int) round($size * 1.25));
+        $size = max(64, $size);
+        $jpeg = self::qrJpegBytes($payload, $size);
+        if ($jpeg === '') {
+            return '';
+        }
+
+        return '<img src="data:image/jpeg;base64,'.base64_encode($jpeg).'" width="'.$size.'" height="'.$size.'" alt="QR">';
+    }
+
+    /**
+     * DomPDF does not render Bacon SVG (use/href) and often skips PNG.
+     * Rasterize the matrix with GD and emit JPEG, same as event cover images.
+     */
+    private static function qrJpegBytes(string $payload, int $size): string
+    {
+        if (! function_exists('imagecreatetruecolor') || $payload === '') {
+            return '';
+        }
 
         try {
-            $png = QrCode::format('png')->size($pngSize)->margin(1)->errorCorrection('H')->generate($payload);
-
-            return '<img src="data:image/png;base64,'.base64_encode($png).'" width="'.$size.'" height="'.$size.'" alt="QR">';
+            $qr = Encoder::encode($payload, ErrorCorrectionLevel::H(), 'UTF-8');
         } catch (\Throwable) {
-            return (string) QrCode::size($size)->margin(1)->errorCorrection('H')->generate($payload);
+            return '';
         }
+
+        $matrix = $qr->getMatrix();
+        $modules = $matrix->getWidth();
+        $margin = 1;
+        $dim = $modules + ($margin * 2);
+        $scale = max(4, (int) ceil($size / $dim));
+        $pixels = $dim * $scale;
+
+        $image = imagecreatetruecolor($pixels, $pixels);
+        if ($image === false) {
+            return '';
+        }
+
+        $white = imagecolorallocate($image, 255, 255, 255);
+        $black = imagecolorallocate($image, 0, 0, 0);
+        imagefill($image, 0, 0, $white);
+
+        for ($y = 0; $y < $modules; $y++) {
+            for ($x = 0; $x < $modules; $x++) {
+                if ($matrix->get($x, $y) !== 1) {
+                    continue;
+                }
+
+                imagefilledrectangle(
+                    $image,
+                    ($x + $margin) * $scale,
+                    ($y + $margin) * $scale,
+                    (($x + $margin + 1) * $scale) - 1,
+                    (($y + $margin + 1) * $scale) - 1,
+                    $black
+                );
+            }
+        }
+
+        ob_start();
+        imagejpeg($image, null, 92);
+        $jpeg = (string) ob_get_clean();
+        imagedestroy($image);
+
+        return $jpeg;
     }
 
     /**
