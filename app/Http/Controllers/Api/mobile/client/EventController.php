@@ -344,6 +344,9 @@ class EventController extends BaseController
         try {
             $event = Event::with([
                 'category', 'city', 'province', 'tickets.sells', 'tickets.formFields', 'sells', 'review', 'like', 'lineups', 'user',
+                'shopProducts' => function ($query) {
+                    $query->active()->with('variants');
+                },
             ])->find($id);
 
             if (!$event) {

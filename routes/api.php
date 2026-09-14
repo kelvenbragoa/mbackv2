@@ -21,13 +21,17 @@ use App\Http\Controllers\Api\web\promotor\PromotorInviteController;
 use App\Http\Controllers\Api\web\promotor\PromotorLineUpsController;
 use App\Http\Controllers\Api\web\promotor\PromotorPackageController;
 use App\Http\Controllers\Api\web\promotor\PromotorProductsController;
+use App\Http\Controllers\Api\web\promotor\PromotorShopOrderController;
+use App\Http\Controllers\Api\web\promotor\PromotorShopProductController;
 use App\Http\Controllers\Api\web\promotor\PromotorProfileController;
 use App\Http\Controllers\Api\web\promotor\PromotorProtocoloController;
 use App\Http\Controllers\Api\web\promotor\PromotorStockNoteController;
 use App\Http\Controllers\Api\web\promotor\PromotorTicketBatchController;
 use App\Http\Controllers\Api\web\promotor\PromotorTicketController;
 use App\Http\Controllers\Api\web\promotor\PromotorTicketFormFieldController;
+use App\Http\Controllers\Api\web\user\ShopCheckOutController;
 use App\Http\Controllers\Api\web\user\UserCashlessController;
+use App\Http\Controllers\Api\web\user\UserShopOrdersController;
 use App\Http\Controllers\Api\web\user\UserCategoriesController;
 use App\Http\Controllers\Api\web\user\UserCheckOutController;
 use App\Http\Controllers\Api\web\user\UserEventsController;
@@ -61,6 +65,9 @@ Route::get('eventos/{id}/live', [UserLiveController::class, 'show']);
 Route::post('webhooks/mux', [MuxWebhookController::class, 'handle'])->middleware('throttle:60,1');
 Route::post('checkout/email-ticket', [UserCheckOutController::class, 'emailTicket'])->middleware('throttle:10,1');
 Route::resource('checkout', UserCheckOutController::class);
+Route::get('shop-checkout/{id}', [ShopCheckOutController::class, 'show']);
+Route::post('shop-checkout', [ShopCheckOutController::class, 'store'])->middleware('throttle:10,1');
+Route::post('shop-checkout/recibo', [ShopCheckOutController::class, 'receipt'])->middleware('throttle:10,1');
 Route::resource('categories', UserCategoriesController::class);
 Route::resource('cashless', UserCashlessController::class);
 Route::post('cashless-recharge', [UserCashlessController::class, 'recharge']);
@@ -74,6 +81,9 @@ Route::get('media/{path}', [MediaController::class, 'show'])->where('path', '.*'
 Route::get('ticket-files/{token}/ticket.pdf', [\App\Http\Controllers\TicketDownloadController::class, 'show'])
     ->middleware('throttle:60,1')
     ->where('token', '[a-f0-9]{64}');
+Route::get('shop-receipt-files/{token}/recibo.pdf', [\App\Http\Controllers\ShopReceiptDownloadController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->where('token', '[a-f0-9]{64}');
 
 
 
@@ -82,6 +92,9 @@ Route::get('ticket-files/{token}/ticket.pdf', [\App\Http\Controllers\TicketDownl
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('meus-bilhetes', [UserTicketsController::class, 'index']);
     Route::get('meus-bilhetes/{id}', [UserTicketsController::class, 'show']);
+    Route::get('meus-recibos', [UserShopOrdersController::class, 'index']);
+    Route::get('meus-recibos/{id}', [UserShopOrdersController::class, 'show']);
+    Route::get('meus-recibos/{id}/pdf', [UserShopOrdersController::class, 'pdf']);
     Route::get('eventos/{id}/live/playback', [UserLiveController::class, 'playback']);
 
     Route::get('promotor-eventos/{id}/live', [PromotorLiveController::class, 'show']);
@@ -107,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('promotor-bar', PromotorBarController::class);
     Route::resource('promotor-lineups', PromotorLineUpsController::class);
     Route::resource('promotor-products', PromotorProductsController::class);
+    Route::resource('promotor-shop-products', PromotorShopProductController::class)->except(['index', 'create']);
     Route::resource('promotor-dashboard', PromotorDashboardController::class);
     Route::resource('promotor-protocolo', PromotorProtocoloController::class);
     Route::resource('promotor-barman', PromotorBarmanController::class);
@@ -147,10 +161,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('promotor-dashboard/{id}/pacotes', [PromotorDashboardController::class, 'pacotes']);
     Route::get('promotor-dashboard/{id}/convites', [PromotorDashboardController::class, 'convites']);
     Route::get('promotor-dashboard/{id}/lineups', [PromotorDashboardController::class, 'lineups']);
+    Route::get('promotor-dashboard/{id}/loja', [PromotorDashboardController::class, 'loja']);
+    Route::post('promotor-shop-orders/{id}/cancel', [PromotorShopOrderController::class, 'cancel']);
 
     Route::get('download-report/{id}/products', [PromotorDashboardController::class, 'bar_report']);
 
     Route::get('download-report/{id}/tickets', [PromotorDashboardController::class, 'ticket_report']);
+
+    Route::get('download-report/{id}/shop', [PromotorDashboardController::class, 'shop_report']);
 
 
     Route::get('download-invite/{id}', [PromotorCustomerInviteController::class, 'downloadinvite']);
@@ -184,6 +202,13 @@ Route::get('/pendinginvites/{id}', [\App\Http\Controllers\Api\mobile\protocols\I
 Route::get('/invite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'invitesdetail']);
 Route::get('/verifyinvite/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'verifyinvites']);
 Route::get('/get-status-invite/{id}', [\App\Http\Controllers\Api\mobile\protocols\InvitesController::class, 'status']);
+
+Route::get('/allshops/{id}', [\App\Http\Controllers\Api\mobile\protocols\ShopPickupController::class, 'index']);
+Route::get('/doneshops/{id}', [\App\Http\Controllers\Api\mobile\protocols\ShopPickupController::class, 'done']);
+Route::get('/pendingshops/{id}', [\App\Http\Controllers\Api\mobile\protocols\ShopPickupController::class, 'pending']);
+Route::get('/shop/{id}', [\App\Http\Controllers\Api\mobile\protocols\ShopPickupController::class, 'detail']);
+Route::get('/verifyshop/{id}/user/{userid}', [\App\Http\Controllers\Api\mobile\protocols\ShopPickupController::class, 'verify']);
+Route::get('/get-status-shop/{id}', [\App\Http\Controllers\Api\mobile\protocols\ShopPickupController::class, 'status']);
 
 //ROTAS BARMAN
 
@@ -277,6 +302,7 @@ Route::prefix('client')->group(function () {
         });
 
         Route::post('/usercheckout', [\App\Http\Controllers\Api\mobile\client\ClientCheckOutController::class, 'store']);
+        Route::post('/shop-checkout', [ShopCheckOutController::class, 'store'])->middleware('throttle:10,1');
 
     });
 

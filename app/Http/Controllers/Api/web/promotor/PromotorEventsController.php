@@ -14,6 +14,7 @@ use App\Models\Invite;
 use App\Models\LineUp;
 use App\Models\Products;
 use App\Models\Protocol;
+use App\Models\ShopProduct;
 use App\Models\Province;
 use App\Models\Status;
 use App\Models\Ticket;
@@ -155,8 +156,7 @@ class PromotorEventsController extends Controller
         $protocols = Protocol::where('event_id',$id)->withCount('tickets')->orderBy('name','asc')->get();
         $barmans = Barman::where('event_id',$id)->with('barstore')->orderBy('name','asc')->get();
         $invites = Invite::where('event_id',$id)->orderBy('name','asc')->get();
-
-
+        $shopProducts = ShopProduct::where('event_id', $id)->with('variants')->orderBy('name')->get();
 
         return response()->json([
             "event"=>$event,
@@ -172,6 +172,7 @@ class PromotorEventsController extends Controller
             "protocols"=>$protocols,
             "barmans"=>$barmans,
             'invites'=>$invites,
+            'shop_products' => $shopProducts,
         ]);
     }
 

@@ -179,6 +179,16 @@ class Event extends Model
         return $this->hasMany('App\Models\Invite', 'event_id', 'id');
     }
 
+    public function shopProducts()
+    {
+        return $this->hasMany(ShopProduct::class, 'event_id', 'id')->orderBy('name');
+    }
+
+    public function sellShops()
+    {
+        return $this->hasMany(SellShop::class, 'event_id', 'id');
+    }
+
     public function getPriceAttribute()
     {
         $firstTicket = $this->tickets()->orderBy('price', 'asc')->first();

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\GlobalController;
 use App\Http\Controllers\OpenGraphController;
+use App\Http\Controllers\ShopReceiptDownloadController;
 use App\Http\Controllers\TicketDownloadController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,11 @@ Route::get('tickets/{token}/ticket.pdf', [TicketDownloadController::class, 'show
     ->middleware('throttle:60,1')
     ->where('token', '[a-f0-9]{64}')
     ->name('tickets.download');
+
+Route::get('shop-receipts/{token}/recibo.pdf', [ShopReceiptDownloadController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->where('token', '[a-f0-9]{64}')
+    ->name('shop.receipts.download');
 
 // Route::get('sendtwilio',[GlobalController::class,'sendtwilio']);
 

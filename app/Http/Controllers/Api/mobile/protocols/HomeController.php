@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerInvite;
 use App\Models\Event;
 use App\Models\SellDetails;
+use App\Models\SellShop;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -25,7 +26,10 @@ class HomeController extends Controller
         $pending_invites = CustomerInvite::where('event_id',$event->id)->where('status',1)->count();
         $done_invites = CustomerInvite::where('event_id',$event->id)->where('status',0)->count();
 
-
+        $shopBase = SellShop::where('event_id', $event->id)->where('status', SellShop::STATUS_PAID);
+        $all_shops = (clone $shopBase)->count();
+        $pending_shops = (clone $shopBase)->whereNull('picked_up_at')->count();
+        $done_shops = (clone $shopBase)->whereNotNull('picked_up_at')->count();
 
         $array[] = array(
             'all_tickets' => $all_tickets,
@@ -35,6 +39,10 @@ class HomeController extends Controller
             'all_invites' => $all_invites,
             'pending_invites' => $pending_invites,
             'done_invites' => $done_invites,
+
+            'all_shops' => $all_shops,
+            'pending_shops' => $pending_shops,
+            'done_shops' => $done_shops,
         );
 
 

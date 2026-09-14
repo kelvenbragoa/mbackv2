@@ -69,7 +69,19 @@ class UserEventsController extends Controller
      */
     public function show(string $id)
     {
-        $event = Event::with(['user', 'province', 'city', 'tickets', 'like', 'lineups', 'type', 'category'])
+        $event = Event::with([
+                'user',
+                'province',
+                'city',
+                'tickets',
+                'like',
+                'lineups',
+                'type',
+                'category',
+                'shopProducts' => function ($query) {
+                    $query->active()->with('variants');
+                },
+            ])
             ->where(function ($query) use ($id) {
                 $query->where('slug', $id)->orWhere('id', $id);
             })
@@ -80,6 +92,11 @@ class UserEventsController extends Controller
                 'error' => 'Evento não encontrado'
             ], 404);
         }
+
+        $event->setRelation(
+            'shopProducts',
+            $event->shopProducts->map->toPublicArray()->values()
+        );
 
         $recommended = Event::with(['user', 'province', 'city', 'type'])
             ->withMin('tickets', 'price')

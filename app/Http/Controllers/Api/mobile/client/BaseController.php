@@ -145,6 +145,9 @@ class BaseController extends Controller
             'ticket_types' => $tickets->map(function($ticket) use ($event) {
                 return $this->formatTicketType($ticket, $event);
             })->toArray(),
+            'shop_products' => $event->relationLoaded('shopProducts')
+                ? $event->shopProducts->map->toPublicArray()->values()->all()
+                : [],
             'is_favorite' => $isFavorite,
             'is_sold_out' => $isSoldOut,
             'rating' => $rating,

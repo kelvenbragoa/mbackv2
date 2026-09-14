@@ -71,6 +71,19 @@ class AccessCode
         );
     }
 
+    public static function shopQrcode(): string
+    {
+        return 'SHP-'.self::random(6);
+    }
+
+    public static function uniqueShopQrcode(): string
+    {
+        return self::unique(
+            fn (string $code) => DB::table('sell_shops')->where('qrcode', $code)->exists(),
+            fn () => self::shopQrcode(),
+        );
+    }
+
     public static function normalize(string $code): string
     {
         $code = strtoupper(preg_replace('/\s+/', '', $code) ?? '');
@@ -81,6 +94,10 @@ class AccessCode
 
         if (preg_match('/^INV([2-9A-HJ-NP-Z]{6})$/', $code, $matches)) {
             return 'INV-'.$matches[1];
+        }
+
+        if (preg_match('/^SHP([2-9A-HJ-NP-Z]{6})$/', $code, $matches)) {
+            return 'SHP-'.$matches[1];
         }
 
         return $code;
