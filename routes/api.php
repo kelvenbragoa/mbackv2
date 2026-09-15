@@ -304,6 +304,11 @@ Route::prefix('client')->group(function () {
         Route::post('/usercheckout', [\App\Http\Controllers\Api\mobile\client\ClientCheckOutController::class, 'store']);
         Route::post('/shop-checkout', [ShopCheckOutController::class, 'store'])->middleware('throttle:10,1');
 
+        // ========== RECIBOS DA LOJA ==========
+        Route::get('/meus-recibos', [UserShopOrdersController::class, 'index']);
+        Route::get('/meus-recibos/{id}', [UserShopOrdersController::class, 'show']);
+        Route::get('/meus-recibos/{id}/pdf', [UserShopOrdersController::class, 'pdf']);
+
     });
 
             

@@ -157,7 +157,7 @@
                                         <p style="margin:0 0 10px 0;font-size:11px;font-weight:700;letter-spacing:1.2px;color:#08a9e6;">NO EVENTO</p>
                                         <p style="margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#5b6472;">1. Abre o PDF em anexo no telemóvel</p>
                                         <p style="margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#5b6472;">2. Mostra o QR Code ao staff — com o ecrã no brilho máximo</p>
-                                        <p style="margin:0;font-size:14px;line-height:1.6;color:#5b6472;">3. Não há envios: o levantamento é só no evento</p>
+                                        <p style="margin:0;font-size:14px;line-height:1.6;color:#5b6472;">3. O levantamento é só no evento</p>
                                     </td>
                                 </tr>
 
