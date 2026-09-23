@@ -111,6 +111,11 @@ class Event extends Model
         return $this->hasOne(Live::class, 'event_id', 'id');
     }
 
+    public function agoraLive()
+    {
+        return $this->hasOne(AgoraLive::class, 'event_id', 'id');
+    }
+
     public function hasValidTicketFor(?User $user): bool
     {
         if (! $user) {

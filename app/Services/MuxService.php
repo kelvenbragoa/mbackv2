@@ -35,7 +35,8 @@ class MuxService
             'new_asset_settings' => new CreateAssetRequest([
                 'playback_policies' => [PlaybackPolicy::SIGNED],
             ]),
-            'latency_mode' => 'reduced',
+            // 'latency_mode' => 'reduced',
+            'latency_mode' => 'low',
             'passthrough' => (string) $eventId,
         ]);
 

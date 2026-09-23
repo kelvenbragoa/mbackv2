@@ -41,6 +41,10 @@ use App\Http\Controllers\Api\web\user\UserTicketsController;
 use App\Http\Controllers\Api\web\user\UserLiveController;
 use App\Http\Controllers\Api\web\user\WelcomePageController;
 use App\Http\Controllers\Api\web\promotor\PromotorLiveController;
+use App\Http\Controllers\Api\web\promotor\PromotorAgoraLiveController;
+use App\Http\Controllers\Api\web\user\UserAgoraLiveController;
+use App\Http\Controllers\Api\web\user\LiveChatController;
+use App\Http\Controllers\Api\web\promotor\PromotorLiveChatController;
 use App\Http\Controllers\Api\MuxWebhookController;
 use App\Http\Controllers\GlobalController;
 use App\Http\Controllers\Api\MediaController;
@@ -62,6 +66,7 @@ Route::post('logout', [UserAuthController::class, 'logout'])->middleware('auth:s
 Route::resource('homepage', WelcomePageController::class);
 Route::resource('eventos', UserEventsController::class);
 Route::get('eventos/{id}/live', [UserLiveController::class, 'show']);
+Route::get('eventos/{id}/live-agora', [UserAgoraLiveController::class, 'show']);
 Route::post('webhooks/mux', [MuxWebhookController::class, 'handle'])->middleware('throttle:60,1');
 Route::post('checkout/email-ticket', [UserCheckOutController::class, 'emailTicket'])->middleware('throttle:10,1');
 Route::resource('checkout', UserCheckOutController::class);
@@ -101,6 +106,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('promotor-eventos/{id}/live', [PromotorLiveController::class, 'store']);
     Route::get('promotor-eventos/{id}/live/playback', [PromotorLiveController::class, 'playback']);
     Route::delete('promotor-eventos/{id}/live', [PromotorLiveController::class, 'destroy']);
+
+    Route::get('eventos/{id}/live-agora/join', [UserAgoraLiveController::class, 'join']);
+    Route::get('eventos/{id}/live-agora/guest', [UserAgoraLiveController::class, 'guest']);
+    Route::post('eventos/{id}/live-agora/guest', [UserAgoraLiveController::class, 'requestGuest'])->middleware('throttle:20,1');
+    Route::delete('eventos/{id}/live-agora/guest', [UserAgoraLiveController::class, 'leaveGuest']);
+
+    Route::get('eventos/{id}/live-chat', [LiveChatController::class, 'index']);
+    Route::post('eventos/{id}/live-chat', [LiveChatController::class, 'store'])->middleware('throttle:30,1');
+    Route::post('eventos/{id}/live-chat/reactions', [LiveChatController::class, 'react'])->middleware('throttle:90,1');
+    Route::post('promotor-eventos/{id}/live-chat/messages/{message}/hide', [PromotorLiveChatController::class, 'hide']);
+    Route::post('promotor-eventos/{id}/live-chat/messages/{message}/pin', [PromotorLiveChatController::class, 'pin']);
+    Route::delete('promotor-eventos/{id}/live-chat/pin', [PromotorLiveChatController::class, 'unpin']);
+    Route::post('promotor-eventos/{id}/live-chat/users/{user}/ban', [PromotorLiveChatController::class, 'ban']);
+
+    Route::get('promotor-eventos/{id}/live-agora', [PromotorAgoraLiveController::class, 'show']);
+    Route::post('promotor-eventos/{id}/live-agora', [PromotorAgoraLiveController::class, 'store']);
+    Route::put('promotor-eventos/{id}/live-agora', [PromotorAgoraLiveController::class, 'update']);
+    Route::delete('promotor-eventos/{id}/live-agora', [PromotorAgoraLiveController::class, 'destroy']);
+    Route::post('promotor-eventos/{id}/live-agora/host-token', [PromotorAgoraLiveController::class, 'hostToken']);
+    Route::post('promotor-eventos/{id}/live-agora/start', [PromotorAgoraLiveController::class, 'start']);
+    Route::post('promotor-eventos/{id}/live-agora/heartbeat', [PromotorAgoraLiveController::class, 'heartbeat']);
+    Route::post('promotor-eventos/{id}/live-agora/stop', [PromotorAgoraLiveController::class, 'stop']);
+    Route::post('promotor-eventos/{id}/live-agora/guests/{guest}/accept', [PromotorAgoraLiveController::class, 'acceptGuest']);
+    Route::post('promotor-eventos/{id}/live-agora/guests/{guest}/reject', [PromotorAgoraLiveController::class, 'rejectGuest']);
+    Route::post('promotor-eventos/{id}/live-agora/guests/{guest}/remove', [PromotorAgoraLiveController::class, 'removeGuest']);
 
     Route::get('auxiliar-event/{id}', [PromotorEventsController::class, 'auxiliar']);
     Route::get('promotor-bar/{id}/copy', [PromotorBarController::class, 'copy']);
@@ -262,6 +292,13 @@ Route::prefix('client')->group(function () {
             Route::post('/generate-slugs', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'generateSlugs']);
             Route::post('/{id}/toggle-favorite', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'toggleEvent']);
             Route::get('/{id}/live/playback', [UserLiveController::class, 'playback']);
+            Route::get('/{id}/live-agora/join', [UserAgoraLiveController::class, 'join']);
+            Route::get('/{id}/live-agora/guest', [UserAgoraLiveController::class, 'guest']);
+            Route::post('/{id}/live-agora/guest', [UserAgoraLiveController::class, 'requestGuest'])->middleware('throttle:20,1');
+            Route::delete('/{id}/live-agora/guest', [UserAgoraLiveController::class, 'leaveGuest']);
+            Route::get('/{id}/live-chat', [LiveChatController::class, 'index']);
+            Route::post('/{id}/live-chat', [LiveChatController::class, 'store'])->middleware('throttle:30,1');
+            Route::post('/{id}/live-chat/reactions', [LiveChatController::class, 'react'])->middleware('throttle:90,1');
             Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
         });
 
@@ -321,6 +358,7 @@ Route::prefix('client')->group(function () {
     Route::get('/events/map', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'map']);
     Route::get('/events/search', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'search']);
     Route::get('/events/{id}/live', [UserLiveController::class, 'show']);
+    Route::get('/events/{id}/live-agora', [UserAgoraLiveController::class, 'show']);
     Route::get('/events/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
     Route::get('/search/popular', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'popularSearches']);
     Route::get('/banners', [\App\Http\Controllers\Api\mobile\client\BannerController::class, 'index']);

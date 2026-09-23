@@ -44,4 +44,10 @@ return [
         'rtmp_url' => env('MUX_RTMP_URL', 'rtmps://global-live.mux.com:443/app'),
     ],
 
+    'agora' => [
+        'app_id' => env('AGORA_APP_ID'),
+        'app_certificate' => env('AGORA_APP_CERTIFICATE'),
+        'token_ttl' => (int) env('AGORA_TOKEN_TTL', 7200),
+    ],
+
 ];
