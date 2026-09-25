@@ -121,6 +121,7 @@ class PromotorAgoraLiveController extends Controller
         }
 
         $live->closeGuests();
+        $live->closeSession();
         $live->update([
             'status' => AgoraLive::STATUS_DISABLED,
             'host_seen_at' => null,
@@ -166,12 +167,19 @@ class PromotorAgoraLiveController extends Controller
             return response()->json(['message' => 'A live interativa não está disponível.'], 404);
         }
 
+        $wasActive = $live->isActive();
+
+        if (! $wasActive) {
+            $live->closeSession();
+        }
+
         $live->update([
             'status' => AgoraLive::STATUS_ACTIVE,
             'host_user_id' => Auth::id(),
             'host_seen_at' => now(),
-            'started_at' => $live->isActive() ? $live->started_at : now(),
+            'started_at' => $wasActive ? $live->started_at : now(),
         ]);
+        $live->openSession(Auth::id());
         $this->broadcastStatus($live);
 
         return response()->json($this->payload($live->fresh()));
@@ -187,9 +195,32 @@ class PromotorAgoraLiveController extends Controller
 
         if ($live->status === AgoraLive::STATUS_ACTIVE) {
             $live->update(['host_seen_at' => now()]);
+
+            if (! $live->liveSession()) {
+                $live->openSession(Auth::id());
+            }
         }
 
         return response()->json($this->payload($live->fresh()));
+    }
+
+    public function sessions(string $id): JsonResponse
+    {
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
+        $live = AgoraLive::where('event_id', $id)->first();
+
+        if (! $live) {
+            return response()->json(['sessions' => []]);
+        }
+
+        $sessions = $live->sessions()->latest('started_at')->limit(20)->get();
+
+        return response()->json([
+            'sessions' => $sessions->map->toSummaryArray()->values(),
+        ]);
     }
 
     public function stop(string $id): JsonResponse
@@ -201,6 +232,7 @@ class PromotorAgoraLiveController extends Controller
         $live = AgoraLive::where('event_id', $id)->firstOrFail();
 
         $live->closeGuests();
+        $live->closeSession();
 
         if (! $live->isDisabled()) {
             $live->update([

@@ -20,6 +20,7 @@ class AgoraLive extends Model
         'host_user_id',
         'host_seen_at',
         'started_at',
+        'current_session_id',
     ];
 
     protected $casts = [
@@ -27,6 +28,67 @@ class AgoraLive extends Model
         'host_seen_at' => 'datetime',
         'started_at' => 'datetime',
     ];
+
+    public function sessions()
+    {
+        return $this->hasMany(AgoraLiveSession::class, 'agora_live_id', 'id');
+    }
+
+    public function currentSession()
+    {
+        return $this->belongsTo(AgoraLiveSession::class, 'current_session_id');
+    }
+
+    /**
+     * Session that viewers should be counted against, only while the host is on air.
+     */
+    public function liveSession(): ?AgoraLiveSession
+    {
+        if (! $this->isActive() || ! $this->current_session_id) {
+            return null;
+        }
+
+        $session = $this->currentSession;
+
+        return $session && ! $session->ended_at ? $session : null;
+    }
+
+    /**
+     * A new session starts every time the host goes on air after being off (stopped or timed out).
+     */
+    public function openSession(?int $hostUserId): AgoraLiveSession
+    {
+        if ($session = $this->liveSession()) {
+            return $session;
+        }
+
+        $this->currentSession?->close();
+
+        $session = $this->sessions()->create([
+            'host_user_id' => $hostUserId,
+            'started_at' => now(),
+        ]);
+        $this->update(['current_session_id' => $session->id]);
+        $this->setRelation('currentSession', $session);
+
+        return $session;
+    }
+
+    public function closeSession(): void
+    {
+        $this->currentSession?->close();
+    }
+
+    public function viewersSummary(): array
+    {
+        $session = $this->liveSession();
+
+        return [
+            'current' => $session?->currentViewers() ?? 0,
+            'peak' => $session?->peak_viewers ?? 0,
+            'unique' => $session?->unique_viewers ?? 0,
+        ];
+    }
 
     public function event()
     {
@@ -87,6 +149,7 @@ class AgoraLive extends Model
             'active' => $this->isActive(),
             'max_guests' => $this->max_guests,
             'started_at' => $this->started_at,
+            'viewers' => $this->viewersSummary(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
@@ -101,6 +164,7 @@ class AgoraLive extends Model
             'status' => $this->publicStatus(),
             'active' => $this->isActive(),
             'max_guests' => $this->max_guests,
+            'viewers' => $this->liveSession()?->currentViewers() ?? 0,
         ];
     }
 }

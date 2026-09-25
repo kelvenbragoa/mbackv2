@@ -72,6 +72,30 @@ class UserAgoraLiveController extends Controller
         ]);
     }
 
+    /**
+     * Viewers ping this while watching; it feeds the "watching now", peak and unique counters.
+     */
+    public function presence(string $id): JsonResponse
+    {
+        [$event, $error] = $this->resolveWatchable($id);
+
+        if ($error) {
+            return $error;
+        }
+
+        $session = $event->agoraLive->liveSession();
+
+        if (! $session) {
+            return response()->json(['viewers' => 0]);
+        }
+
+        if ((int) $event->user_id === (int) Auth::id()) {
+            return response()->json(['viewers' => $session->currentViewers()]);
+        }
+
+        return response()->json(['viewers' => $session->touchViewer((int) Auth::id())]);
+    }
+
     public function requestGuest(string $id): JsonResponse
     {
         [$event, $error] = $this->resolveWatchable($id);

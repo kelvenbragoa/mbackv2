@@ -109,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('eventos/{id}/live-agora/join', [UserAgoraLiveController::class, 'join']);
     Route::get('eventos/{id}/live-agora/guest', [UserAgoraLiveController::class, 'guest']);
+    Route::post('eventos/{id}/live-agora/presence', [UserAgoraLiveController::class, 'presence'])->middleware('throttle:10,1');
     Route::post('eventos/{id}/live-agora/guest', [UserAgoraLiveController::class, 'requestGuest'])->middleware('throttle:20,1');
     Route::delete('eventos/{id}/live-agora/guest', [UserAgoraLiveController::class, 'leaveGuest']);
 
@@ -128,6 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('promotor-eventos/{id}/live-agora/start', [PromotorAgoraLiveController::class, 'start']);
     Route::post('promotor-eventos/{id}/live-agora/heartbeat', [PromotorAgoraLiveController::class, 'heartbeat']);
     Route::post('promotor-eventos/{id}/live-agora/stop', [PromotorAgoraLiveController::class, 'stop']);
+    Route::get('promotor-eventos/{id}/live-agora/sessions', [PromotorAgoraLiveController::class, 'sessions']);
     Route::post('promotor-eventos/{id}/live-agora/guests/{guest}/accept', [PromotorAgoraLiveController::class, 'acceptGuest']);
     Route::post('promotor-eventos/{id}/live-agora/guests/{guest}/reject', [PromotorAgoraLiveController::class, 'rejectGuest']);
     Route::post('promotor-eventos/{id}/live-agora/guests/{guest}/remove', [PromotorAgoraLiveController::class, 'removeGuest']);
@@ -294,11 +296,25 @@ Route::prefix('client')->group(function () {
             Route::get('/{id}/live/playback', [UserLiveController::class, 'playback']);
             Route::get('/{id}/live-agora/join', [UserAgoraLiveController::class, 'join']);
             Route::get('/{id}/live-agora/guest', [UserAgoraLiveController::class, 'guest']);
+            Route::post('/{id}/live-agora/presence', [UserAgoraLiveController::class, 'presence'])->middleware('throttle:10,1');
             Route::post('/{id}/live-agora/guest', [UserAgoraLiveController::class, 'requestGuest'])->middleware('throttle:20,1');
             Route::delete('/{id}/live-agora/guest', [UserAgoraLiveController::class, 'leaveGuest']);
             Route::get('/{id}/live-chat', [LiveChatController::class, 'index']);
             Route::post('/{id}/live-chat', [LiveChatController::class, 'store'])->middleware('throttle:30,1');
             Route::post('/{id}/live-chat/reactions', [LiveChatController::class, 'react'])->middleware('throttle:90,1');
+            Route::get('/{id}/live-agora/host', [PromotorAgoraLiveController::class, 'show']);
+            Route::post('/{id}/live-agora/host/token', [PromotorAgoraLiveController::class, 'hostToken']);
+            Route::post('/{id}/live-agora/host/start', [PromotorAgoraLiveController::class, 'start']);
+            Route::post('/{id}/live-agora/host/heartbeat', [PromotorAgoraLiveController::class, 'heartbeat']);
+            Route::post('/{id}/live-agora/host/stop', [PromotorAgoraLiveController::class, 'stop']);
+            Route::get('/{id}/live-agora/host/sessions', [PromotorAgoraLiveController::class, 'sessions']);
+            Route::post('/{id}/live-agora/host/guests/{guest}/accept', [PromotorAgoraLiveController::class, 'acceptGuest']);
+            Route::post('/{id}/live-agora/host/guests/{guest}/reject', [PromotorAgoraLiveController::class, 'rejectGuest']);
+            Route::post('/{id}/live-agora/host/guests/{guest}/remove', [PromotorAgoraLiveController::class, 'removeGuest']);
+            Route::post('/{id}/live-chat/messages/{message}/hide', [PromotorLiveChatController::class, 'hide']);
+            Route::post('/{id}/live-chat/messages/{message}/pin', [PromotorLiveChatController::class, 'pin']);
+            Route::delete('/{id}/live-chat/pin', [PromotorLiveChatController::class, 'unpin']);
+            Route::post('/{id}/live-chat/users/{user}/ban', [PromotorLiveChatController::class, 'ban']);
             Route::get('/{id}', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'show']);
         });
 
