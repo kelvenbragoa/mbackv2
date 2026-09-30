@@ -18,4 +18,8 @@ class Protocol extends Model
         return $this->hasMany('App\Models\SellDetails', 'protocol_id', 'id');
     }
 
+    public function tickets_validated(){
+        return $this->hasMany('App\Models\SellDetails', 'protocol_id', 'id')->where('status', 0);
+    }
+
 }
