@@ -71,11 +71,13 @@ class PromotorProtocoloController extends Controller
         $protocolo = Protocol::find($id);
         $protocols = Protocol::where('event_id', $protocolo->event_id)->get();
         $totalEscaneados = SellDetails::where('protocol_id', $id)->count();
+        $totalEscaneadosValidados = SellDetails::where('protocol_id', $id)->where('status', 0)->count();
 
         return response()->json([
             "protocolo"=>$protocolo,
             "total"=>$totalEscaneados,
-            "protocols"=>$protocols
+            "protocols"=>$protocols,
+            "total_validated"=>$totalEscaneadosValidados
         ]);
     }
 
