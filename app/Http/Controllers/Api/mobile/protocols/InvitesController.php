@@ -68,7 +68,13 @@ class InvitesController extends Controller
             ], 404);
         }
 
-        if ((int) $invite->status === 0 || $invite->verified_at !== null) {
+        if ((int) $invite->status === CustomerInvite::STATUS_RETURNED) {
+            return response([
+                'message' => 'Este convite foi devolvido e já não é válido.',
+            ], 409);
+        }
+
+        if ((int) $invite->status === CustomerInvite::STATUS_USED || $invite->verified_at !== null) {
             return response([
                 'message' => 'Este convite já foi verificado.',
             ], 409);

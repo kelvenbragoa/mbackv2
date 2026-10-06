@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\web\promotor\PromotorBarmanController;
 use App\Http\Controllers\Api\web\promotor\PromotorCustomerInviteController;
 use App\Http\Controllers\Api\web\promotor\PromotorDashboardController;
 use App\Http\Controllers\Api\web\promotor\PromotorEventsController;
+use App\Http\Controllers\Api\web\promotor\PromotorInviteBatchController;
 use App\Http\Controllers\Api\web\promotor\PromotorInviteController;
 use App\Http\Controllers\Api\web\promotor\PromotorLineUpsController;
 use App\Http\Controllers\Api\web\promotor\PromotorPackageController;
@@ -148,6 +149,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('promotor-tickets/{ticket}/batches/{sell}/tickets', [PromotorTicketBatchController::class, 'tickets']);
     Route::get('promotor-tickets/{ticket}/batches/{sell}/pdf', [PromotorTicketBatchController::class, 'pdf']);
     Route::resource('promotor-invites', PromotorInviteController::class);
+    Route::get('promotor-invites/{invite}/batches', [PromotorInviteBatchController::class, 'index']);
+    Route::post('promotor-invites/{invite}/batches', [PromotorInviteBatchController::class, 'store']);
+    Route::post('promotor-invites/{invite}/batches/{batch}/return', [PromotorInviteBatchController::class, 'returnUnused']);
+    Route::get('promotor-invites/{invite}/batches/{batch}/invites', [PromotorInviteBatchController::class, 'invites']);
     Route::resource('promotor-packages', PromotorPackageController::class);
     Route::resource('promotor-bar', PromotorBarController::class);
     Route::resource('promotor-lineups', PromotorLineUpsController::class);

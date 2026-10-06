@@ -41,22 +41,29 @@ class PromotorCustomerInviteController extends Controller
         return response()->json($customers);
     }
 
-    public function storebulk(Request $request){
-        $data = $request->all();
+    public function storebulk(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'event_id' => ['required', 'integer'],
+            'invite_id' => ['required', 'integer', 'exists:invites,id'],
+            'end' => ['required', 'integer', 'min:1', 'max:500'],
+            'status' => ['nullable', 'integer'],
+        ]);
 
-        DB::transaction(function () use ($data) {
-            for ($i=1; $i <= $data['end']; $i++) { 
-            CustomerInvite::create([
-                    "name" =>$data["name"].'#'.$i,
-                    "event_id" =>$data["event_id"],
-                    "invite_id" =>$data["invite_id"],
-                    "status" =>$data["status"],
-            ]);
-            }
+        $name = trim($data['name']);
+        $qty = (int) $data['end'];
+
+        DB::transaction(function () use ($data, $name, $qty) {
+            CustomerInvite::createBatch(
+                (int) $data['invite_id'],
+                (int) $data['event_id'],
+                $name,
+                $qty
+            );
         });
 
-        
-        $customers = CustomerInvite::where('invite_id', $data['invite_id'])->get();
+        $customers = CustomerInvite::where('invite_id', $data['invite_id'])->orderByDesc('id')->get();
 
         return response()->json($customers);
     }
@@ -67,9 +74,12 @@ class PromotorCustomerInviteController extends Controller
     public function show(string $id)
     {
         //
-        $customer = CustomerInvite::with('invite')->with('event.province')->find($id);
-        return response()->json(
-            ["customer"=>$customer
+        $customer = CustomerInvite::with('invite')
+            ->with(['event.province', 'event.city'])
+            ->find($id);
+
+        return response()->json([
+            'customer' => $customer,
         ]);
     }
 

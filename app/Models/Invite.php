@@ -10,8 +10,13 @@ class Invite extends Model
     use HasFactory;
     protected $guarded = [];
 
-    public function customers(){
-        return $this->hasMany('App\Models\CustomerInvite', 'invite_id', 'id');
+    public function customers()
+    {
+        return $this->hasMany(CustomerInvite::class, 'invite_id', 'id');
     }
 
+    public function event()
+    {
+        return $this->belongsTo(Event::class, 'event_id', 'id');
+    }
 }
