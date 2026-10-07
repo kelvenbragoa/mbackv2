@@ -286,6 +286,8 @@ Route::prefix('client')->group(function () {
         Route::get('/me', [ClientAuthController::class, 'me']);
         Route::put('/me', [ClientAuthController::class, 'updateProfile']);
         Route::patch('/me', [ClientAuthController::class, 'updateProfile']);
+        Route::post('/me/avatar', [ClientAuthController::class, 'updateAvatar']);
+        Route::delete('/me/avatar', [ClientAuthController::class, 'deleteAvatar']);
         Route::delete('/me', [ClientAuthController::class, 'destroy']);
 
         // ========== EVENTOS ==========

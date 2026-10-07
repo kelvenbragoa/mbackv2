@@ -94,6 +94,8 @@ class User extends Authenticatable
 
     public function toApiArray()
     {
+        $image = $this->image ? ltrim((string) $this->image, '/') : null;
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -101,6 +103,10 @@ class User extends Authenticatable
             'mobile' => $this->mobile,
             'phone' => $this->mobile,
             'address' => $this->address,
+            'image' => $image,
+            'avatar' => $image,
+            'image_url' => $image ? asset('storage/'.$image) : null,
+            'avatar_url' => $image ? asset('storage/'.$image) : null,
             'email_verified_at' => $this->email_verified_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

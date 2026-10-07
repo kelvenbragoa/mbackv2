@@ -155,6 +155,69 @@ class ClientAuthController extends Controller
     }
 
     /**
+     * Actualizar fotografia de perfil (multipart).
+     */
+    public function updateAvatar(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|image|mimes:jpeg,jpg,png,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Imagem inválida. Usa JPG, PNG ou WEBP até 5 MB.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $previous = $user->image;
+
+        $file = $request->file('image');
+        $imageName = $user->id.'-'.time().'.'.$file->extension();
+        $file->storeAs('public/avatars', $imageName);
+        $user->image = 'avatars/'.$imageName;
+        $user->save();
+
+        if ($previous && $previous !== $user->image) {
+            $oldPath = storage_path('app/public/'.ltrim($previous, '/'));
+            if (is_file($oldPath)) {
+                @unlink($oldPath);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Fotografia de perfil actualizada!',
+            'user' => $user->fresh()->toApiArray(),
+        ]);
+    }
+
+    /**
+     * Remover fotografia de perfil.
+     */
+    public function deleteAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->image) {
+            $oldPath = storage_path('app/public/'.ltrim($user->image, '/'));
+            if (is_file($oldPath)) {
+                @unlink($oldPath);
+            }
+            $user->image = null;
+            $user->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Fotografia de perfil removida.',
+            'user' => $user->fresh()->toApiArray(),
+        ]);
+    }
+
+    /**
      * Revogar todos os tokens do usuário
      */
     public function logoutAll(Request $request)
