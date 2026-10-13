@@ -216,7 +216,7 @@ class PromotorTicketBatchController extends Controller
             return $sell;
         }
 
-        $sell->load(['event.province', 'event.city', 'ticket']);
+        $sell->load(['event.province', 'event.city', 'event.user:id,name,company_name,image', 'ticket']);
 
         $details = SellDetails::query()
             ->where('sell_id', $sell->id)
