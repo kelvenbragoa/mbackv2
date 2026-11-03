@@ -27,6 +27,11 @@ class SellBar extends Model
         return $this->hasOne('App\Models\Barman', 'id', 'user_id');
     }
 
+    public function barstore()
+    {
+        return $this->belongsTo('App\Models\BarStore', 'bar_store_id');
+    }
+
     public function verified_by_user()
     {
         return $this->hasOne('App\Models\Barman', 'id', 'verified_by');

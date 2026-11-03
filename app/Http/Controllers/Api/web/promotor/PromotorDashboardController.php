@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\web\promotor;
 
+use App\Exports\BarSalesExport;
+use App\Exports\TicketSalesExport;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\AuthorizesEventAccess;
 use App\Models\Barman;
@@ -13,6 +15,8 @@ use App\Models\LineUp;
 use App\Models\Products;
 use App\Models\Protocol;
 use App\Models\Sell;
+use App\Models\SellBar;
+use App\Models\SellDetailBar;
 use App\Models\SellDetails;
 use App\Models\SellDetailShop;
 use App\Models\SellShop;
@@ -23,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 
 class PromotorDashboardController extends Controller
@@ -95,13 +100,34 @@ class PromotorDashboardController extends Controller
             return $denied;
         }
 
-        $event = Event::with('tickets.sells')
-            ->with('invites.customers')
-            ->with('barstores.sells')
-            ->with('products.sells')
-            ->with('products.barstore')
-            ->with('shopProducts.variants')
+        $event = Event::with([
+                'category',
+                'tickets' => fn ($query) => $query->withCount('stockSells'),
+                'invites' => fn ($query) => $query->withCount('customers'),
+                'barstores' => fn ($query) => $query->withCount('products')
+                    ->withSum('sells as sold_qtd', 'qtd')
+                    ->withSum('sells as sold_value', 'total'),
+                'products' => fn ($query) => $query->with('barstore:id,name')
+                    ->withSum('sells as sold_qtd', 'qtd')
+                    ->withSum('sells as sold_value', 'total'),
+                'shopProducts.variants',
+            ])
             ->find($id);
+
+        $revenueByTicket = Sell::where('event_id', $id)
+            ->selectRaw('ticket_id, SUM(total) as total')
+            ->groupBy('ticket_id')
+            ->pluck('total', 'ticket_id');
+
+        $event->tickets->each(function (Ticket $ticket) use ($revenueByTicket) {
+            $ticket->sold_value = (float) ($revenueByTicket[$ticket->id] ?? 0);
+            $ticket->available_quantity = max(0, (int) $ticket->max_qtd - (int) $ticket->stock_sells_count);
+        });
+
+        $event->products->concat($event->barstores)->each(function ($row) {
+            $row->sold_qtd = (int) $row->sold_qtd;
+            $row->sold_value = (float) $row->sold_value;
+        });
         $tickets = Ticket::where('event_id',$id)->where('is_package',0)->orderBy('id','desc')->count();
         $packages = Ticket::where('event_id',$id)->where('is_package',1)->orderBy('id','desc')->count();
         $barstores = BarStore::where('event_id',$id)->with('products')->orderBy('id','desc')->count();
@@ -111,7 +137,7 @@ class PromotorDashboardController extends Controller
         $barmans = Barman::where('event_id',$id)->with('barstore')->orderBy('name','asc')->count();
         $invites = Invite::where('event_id',$id)->orderBy('name','asc')->count();
         $shop = ShopProduct::where('event_id', $id)->count();
-        $totalamount = $event->sell_bar_detail->sum('total');
+        $totalamount = (float) $event->sell_bar()->sum('total');
         $shopRevenue = (float) SellShop::where('event_id', $id)->where('status', SellShop::STATUS_PAID)->sum('total');
 
         $shopPaidLines = SellDetailShop::where('event_id', $id)
@@ -138,6 +164,9 @@ class PromotorDashboardController extends Controller
             'invites'=>$invites,
             'shop'=>$shop,
             'event'=>$event,
+            'ticket_revenue' => (float) $revenueByTicket->sum(),
+            'tickets_sold' => SellDetails::where('event_id', $id)->consumingStock()->count(),
+            'invites_issued' => (int) $event->invites->sum('customers_count'),
             'totalamount'=>$totalamount,
             'shop_revenue'=>$shopRevenue,
         ]);
@@ -169,179 +198,334 @@ class PromotorDashboardController extends Controller
 
 
     public function bilhetes($id){
-        if ($denied = $this->denyEventAccess($id)) {
-            return $denied;
-        }
-
-        $tickets = Ticket::where('event_id',$id)->where('is_package',0)->orderBy('id','desc')->get();
-        $ticket_issued = Sell::where('event_id', $id)
-            ->with([
-                'ticket.formFields',
-                'user',
-                'selldetails',
-            ])
-            ->orderBy('id', 'desc')
-            ->get();
-
-        $allsells_value = Sell::where('event_id',$id)->sum('total');
-        $allsells_total = Sell::where('event_id',$id)->sum('qty');
-
-        $allsells_value_today = Sell::where('event_id',$id)->whereDate('created_at',now())->sum('total');
-        $allsells_total_today = Sell::where('event_id',$id)->whereDate('created_at',now())->sum('qty');
-
-        $allsells_value_week = Sell::where('event_id',$id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('total');
-        $allsells_total_week = Sell::where('event_id',$id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('qty');
-
-        $allsells_value_month = Sell::where('event_id',$id)->whereMonth('created_at',date('m'))->sum('total');
-        $allsells_total_month = Sell::where('event_id',$id)->whereMonth('created_at',date('m'))->sum('qty');
-
-        $ticket_report = [];
-        $dataTicketDay = [];
-        $dataTicketMonth = [];
-
-        foreach ($tickets as $ticket) {
-
-            for ($x = 1; $x <= 31; $x++) {
-                $ticketChartDay = Sell::whereDay('created_at',$x)->whereMonth('created_at',date('m'))->whereYear('created_at',date('Y'))->where('ticket_id',$ticket->id)->sum('total');
-                $dataTicketDay[]=$ticketChartDay;
-            }
-    
-            for ($x = 1; $x <= 12; $x++) {
-                $ticketChartMonth = Sell::whereMonth('created_at',$x)->whereYear('created_at',date('Y'))->where('ticket_id',$ticket->id)->sum('total');
-                $dataTicketMonth[]=$ticketChartMonth;
-            }
-
-
-            $ticket_report[] = array(
-                'name' => $ticket->name,
-                'total' => $ticket->sell->sum('qty'),
-                'value' => $ticket->sell->sum('total'),
-
-                'total_today' => Sell::where('ticket_id',$ticket->id)->whereDate('created_at',now())->sum('qty'),
-                'value_today' => Sell::where('ticket_id',$ticket->id)->whereDate('created_at',now())->sum('total'),
-
-                'total_week' => Sell::where('ticket_id',$ticket->id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('qty'),
-                'value_week' => Sell::where('ticket_id',$ticket->id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('total'),
-
-                'total_month' => Sell::where('ticket_id',$ticket->id)->whereMonth('created_at',date('m'))->sum('qty'),
-                'value_month' => Sell::where('ticket_id',$ticket->id)->whereMonth('created_at',date('m'))->sum('total'),
-
-                'dataTicketDay'=> $dataTicketDay,
-                'dataTicketMonth'=>$dataTicketMonth,
-            );
-            $dataTicketDay = [];
-            $dataTicketMonth = [];
-        }
-
-
-        return response()->json([
-            'allsells_value' => $allsells_value,
-            'allsells_total' => $allsells_total,
-
-            'allsells_value_today' => $allsells_value_today,
-            'allsells_total_today' => $allsells_total_today,
-
-            'allsells_value_week' => $allsells_value_week,
-            'allsells_total_week' => $allsells_total_week,
-
-            'allsells_value_month' => $allsells_value_month,
-            'allsells_total_month' => $allsells_total_month,
-
-            'ticket_report' => $ticket_report,
-            'tickets_issued' => $ticket_issued
-
-
-
-        ]);
-
+        return $this->ticketSalesDashboard($id, false);
     }
 
     public function pacotes($id){
+        return $this->ticketSalesDashboard($id, true);
+    }
+
+    public function vendas(Request $request, $id)
+    {
         if ($denied = $this->denyEventAccess($id)) {
             return $denied;
         }
 
-        $tickets = Ticket::where('event_id',$id)->where('is_package',1)->orderBy('id','desc')->get();
-        $ticket_issued = Sell::where('event_id', $id)
-            ->with([
-                'ticket.formFields',
-                'user',
-                'selldetails',
-            ])
+        $perPage = min(max((int) $request->query('per_page', 20), 5), 100);
+        $search = trim((string) $request->query('search', ''));
+        $sortField = in_array($request->query('sort_field'), ['qty', 'total', 'created_at'], true)
+            ? $request->query('sort_field')
+            : 'id';
+        $sortOrder = $request->query('sort_order') === 'asc' ? 'asc' : 'desc';
+
+        $sells = Sell::where('event_id', $id)
+            ->when($request->filled('ticket_id'), fn ($query) => $query->where('ticket_id', (int) $request->query('ticket_id')))
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.$search.'%';
+                $query->where(function ($query) use ($like) {
+                    $query->where('name', 'like', $like)
+                        ->orWhere('email', 'like', $like)
+                        ->orWhere('mobile', 'like', $like)
+                        ->orWhereHas('ticket', fn ($ticket) => $ticket->where('name', 'like', $like))
+                        ->orWhereHas('selldetails', fn ($detail) => $detail->where('form_answers', 'like', $like));
+                });
+            })
+            ->with(['ticket:id,name', 'ticket.formFields', 'selldetails:id,sell_id,form_answers'])
+            ->orderBy($sortField, $sortOrder)
             ->orderBy('id', 'desc')
-            ->get();
+            ->paginate($perPage);
 
-        $allsells_value = Sell::where('event_id',$id)->sum('total');
-        $allsells_total = Sell::where('event_id',$id)->sum('qty');
+        return response()->json($sells);
+    }
 
-        $allsells_value_today = Sell::where('event_id',$id)->whereDate('created_at',now())->sum('total');
-        $allsells_total_today = Sell::where('event_id',$id)->whereDate('created_at',now())->sum('qty');
-
-        $allsells_value_week = Sell::where('event_id',$id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('total');
-        $allsells_total_week = Sell::where('event_id',$id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('qty');
-
-        $allsells_value_month = Sell::where('event_id',$id)->whereMonth('created_at',date('m'))->sum('total');
-        $allsells_total_month = Sell::where('event_id',$id)->whereMonth('created_at',date('m'))->sum('qty');
-
-        $ticket_report = [];
-        $dataTicketDay = [];
-        $dataTicketMonth = [];
-
-        foreach ($tickets as $ticket) {
-
-            for ($x = 1; $x <= 31; $x++) {
-                $ticketChartDay = Sell::whereDay('created_at',$x)->whereMonth('created_at',date('m'))->whereYear('created_at',date('Y'))->where('ticket_id',$ticket->id)->sum('total');
-                $dataTicketDay[]=$ticketChartDay;
-            }
-    
-            for ($x = 1; $x <= 12; $x++) {
-                $ticketChartMonth = Sell::whereMonth('created_at',$x)->whereYear('created_at',date('Y'))->where('ticket_id',$ticket->id)->sum('total');
-                $dataTicketMonth[]=$ticketChartMonth;
-            }
-
-
-            $ticket_report[] = array(
-                'name' => $ticket->name,
-                'total' => $ticket->sell->sum('qty'),
-                'value' => $ticket->sell->sum('total'),
-
-                'total_today' => Sell::where('ticket_id',$ticket->id)->whereDate('created_at',now())->sum('qty'),
-                'value_today' => Sell::where('ticket_id',$ticket->id)->whereDate('created_at',now())->sum('total'),
-
-                'total_week' => Sell::where('ticket_id',$ticket->id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('qty'),
-                'value_week' => Sell::where('ticket_id',$ticket->id)->whereBetween('created_at',[Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->sum('total'),
-
-                'total_month' => Sell::where('ticket_id',$ticket->id)->whereMonth('created_at',date('m'))->sum('qty'),
-                'value_month' => Sell::where('ticket_id',$ticket->id)->whereMonth('created_at',date('m'))->sum('total'),
-
-                'dataTicketDay'=> $dataTicketDay,
-                'dataTicketMonth'=>$dataTicketMonth,
-            );
-            $dataTicketDay = [];
-            $dataTicketMonth = [];
+    private function ticketSalesDashboard($id, bool $isPackage)
+    {
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
         }
 
+        $tickets = Ticket::where('event_id', $id)->where('is_package', $isPackage ? 1 : 0)->orderBy('id', 'desc')->get(['id', 'name']);
+        $ticketIds = $tickets->pluck('id');
+
+        [$periodTotals, $bindings] = $this->periodSums(['total' => 'qty', 'value' => 'total']);
+
+        $all = Sell::where('event_id', $id)->selectRaw($periodTotals, $bindings)->first();
+
+        $byTicket = Sell::whereIn('ticket_id', $ticketIds)
+            ->selectRaw('ticket_id, '.$periodTotals, $bindings)
+            ->groupBy('ticket_id')
+            ->get()
+            ->keyBy('ticket_id');
+
+        [$daily, $monthly] = $this->revenueSeries(Sell::whereIn('ticket_id', $ticketIds), 'ticket_id');
+        $series = fn ($rows, int $length) => $this->fillSeries($rows, $length);
+
+        $ticket_report = $tickets->map(function (Ticket $ticket) use ($byTicket, $daily, $monthly, $series) {
+            $totals = $byTicket->get($ticket->id);
+
+            return [
+                'id' => $ticket->id,
+                'name' => $ticket->name,
+                'total' => (int) ($totals->total ?? 0),
+                'value' => (float) ($totals->value ?? 0),
+                'total_today' => (int) ($totals->total_today ?? 0),
+                'value_today' => (float) ($totals->value_today ?? 0),
+                'total_week' => (int) ($totals->total_week ?? 0),
+                'value_week' => (float) ($totals->value_week ?? 0),
+                'total_month' => (int) ($totals->total_month ?? 0),
+                'value_month' => (float) ($totals->value_month ?? 0),
+                'dataTicketDay' => $series($daily->get($ticket->id), 31),
+                'dataTicketMonth' => $series($monthly->get($ticket->id), 12),
+            ];
+        })->values();
 
         return response()->json([
-            'allsells_value' => $allsells_value,
-            'allsells_total' => $allsells_total,
-
-            'allsells_value_today' => $allsells_value_today,
-            'allsells_total_today' => $allsells_total_today,
-
-            'allsells_value_week' => $allsells_value_week,
-            'allsells_total_week' => $allsells_total_week,
-
-            'allsells_value_month' => $allsells_value_month,
-            'allsells_total_month' => $allsells_total_month,
-
+            'allsells_value' => (float) $all->value,
+            'allsells_total' => (int) $all->total,
+            'allsells_value_today' => (float) $all->value_today,
+            'allsells_total_today' => (int) $all->total_today,
+            'allsells_value_week' => (float) $all->value_week,
+            'allsells_total_week' => (int) $all->total_week,
+            'allsells_value_month' => (float) $all->value_month,
+            'allsells_total_month' => (int) $all->total_month,
             'ticket_report' => $ticket_report,
-            'tickets_issued' => $ticket_issued
-
-
-
         ]);
+    }
 
+    public function bar($id)
+    {
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
+        [$sellSums, $sellBindings] = $this->periodSums(['value' => 'total', 'orders' => '1']);
+        [$itemSums, $itemBindings] = $this->periodSums(['items' => 'qtd']);
+
+        $sells = SellBar::where('event_id', $id);
+        $details = SellDetailBar::where('event_id', $id);
+
+        $totals = (clone $sells)->selectRaw($sellSums, $sellBindings)->first();
+        $items = (clone $details)->selectRaw($itemSums, $itemBindings)->first();
+
+        $byStatus = (clone $sells)->selectRaw('status, COUNT(*) as orders, SUM(total) as value')->groupBy('status')->get()->keyBy('status');
+
+        $byMethod = (clone $sells)
+            ->selectRaw('method, COUNT(*) as orders, SUM(total) as value')
+            ->groupBy('method')
+            ->orderByDesc('value')
+            ->get()
+            ->map(fn ($row) => ['method' => $row->method, 'orders' => (int) $row->orders, 'value' => (float) $row->value]);
+
+        $withoutItems = (clone $sells)->doesntHave('selldetails')->selectRaw('COUNT(*) as orders, COALESCE(SUM(total), 0) as value')->first();
+
+        $barSums = (clone $sells)->selectRaw('bar_store_id, '.$sellSums, $sellBindings)->groupBy('bar_store_id')->get()->keyBy('bar_store_id');
+        $barItems = (clone $details)->selectRaw('bar_store_id, '.$itemSums, $itemBindings)->groupBy('bar_store_id')->get()->keyBy('bar_store_id');
+        [$daily, $monthly] = $this->revenueSeries(clone $sells, 'bar_store_id');
+
+        $bars = BarStore::where('event_id', $id)->orderBy('name')->get(['id', 'name'])->map(function (BarStore $bar) use ($barSums, $barItems, $daily, $monthly) {
+            $sum = $barSums->get($bar->id);
+            $item = $barItems->get($bar->id);
+
+            return [
+                'id' => $bar->id,
+                'name' => $bar->name,
+                'value' => (float) ($sum->value ?? 0),
+                'value_today' => (float) ($sum->value_today ?? 0),
+                'value_week' => (float) ($sum->value_week ?? 0),
+                'value_month' => (float) ($sum->value_month ?? 0),
+                'orders' => (int) ($sum->orders ?? 0),
+                'items' => (int) ($item->items ?? 0),
+                'items_today' => (int) ($item->items_today ?? 0),
+                'items_week' => (int) ($item->items_week ?? 0),
+                'items_month' => (int) ($item->items_month ?? 0),
+                'dataDay' => $this->fillSeries($daily->get($bar->id), 31),
+                'dataMonth' => $this->fillSeries($monthly->get($bar->id), 12),
+            ];
+        })->values();
+
+        $productSales = (clone $details)
+            ->selectRaw('product_id, SUM(qtd) as qtd, SUM(total) as value')
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $products = Products::where('event_id', $id)->with('barstore:id,name')->get()
+            ->map(function (Products $product) use ($productSales) {
+                $sale = $productSales->get($product->id);
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'bar_store_id' => $product->bar_store_id,
+                    'bar' => $product->barstore->name ?? null,
+                    'sell_price' => (float) $product->sell_price,
+                    'stock' => (int) $product->qtd,
+                    'sold_qtd' => (int) ($sale->qtd ?? 0),
+                    'sold_value' => (float) ($sale->value ?? 0),
+                ];
+            })
+            ->sortByDesc('sold_value')
+            ->values();
+
+        $barmanSales = (clone $sells)
+            ->selectRaw('user_id, COUNT(*) as orders, SUM(total) as value')
+            ->selectRaw("COALESCE(SUM(CASE WHEN method = 'dinheiro' THEN total END), 0) as cash")
+            ->selectRaw("COALESCE(SUM(CASE WHEN method = 'cashless' THEN total END), 0) as cashless")
+            ->selectRaw('COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) as pending')
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
+        $barmen = Barman::where('event_id', $id)->with('barstore:id,name')->orderBy('name')->get(['id', 'name', 'bar_store_id'])
+            ->map(function (Barman $barman) use ($barmanSales) {
+                $sale = $barmanSales->get($barman->id);
+                $value = (float) ($sale->value ?? 0);
+                $cash = (float) ($sale->cash ?? 0);
+                $cashless = (float) ($sale->cashless ?? 0);
+
+                return [
+                    'id' => $barman->id,
+                    'name' => $barman->name,
+                    'bar_store_id' => $barman->bar_store_id,
+                    'bar' => $barman->barstore->name ?? null,
+                    'orders' => (int) ($sale->orders ?? 0),
+                    'value' => $value,
+                    'cash' => $cash,
+                    'cashless' => $cashless,
+                    'electronic' => $value - $cash - $cashless,
+                    'pending' => (int) ($sale->pending ?? 0),
+                ];
+            })
+            ->sortByDesc('value')
+            ->values();
+
+        return response()->json([
+            'value' => (float) $totals->value,
+            'value_today' => (float) $totals->value_today,
+            'value_week' => (float) $totals->value_week,
+            'value_month' => (float) $totals->value_month,
+            'orders' => (int) $totals->orders,
+            'orders_today' => (int) $totals->orders_today,
+            'orders_week' => (int) $totals->orders_week,
+            'orders_month' => (int) $totals->orders_month,
+            'items' => (int) $items->items,
+            'items_today' => (int) $items->items_today,
+            'items_week' => (int) $items->items_week,
+            'items_month' => (int) $items->items_month,
+            'delivered' => ['orders' => (int) ($byStatus[0]->orders ?? 0), 'value' => (float) ($byStatus[0]->value ?? 0)],
+            'pending' => ['orders' => (int) ($byStatus[1]->orders ?? 0), 'value' => (float) ($byStatus[1]->value ?? 0)],
+            'without_items' => ['orders' => (int) $withoutItems->orders, 'value' => (float) $withoutItems->value],
+            'by_method' => $byMethod,
+            'bars' => $bars,
+            'products' => $products,
+            'barmen' => $barmen,
+        ]);
+    }
+
+    public function bar_vendas(Request $request, $id)
+    {
+        if ($denied = $this->denyEventAccess($id)) {
+            return $denied;
+        }
+
+        $perPage = min(max((int) $request->query('per_page', 20), 5), 100);
+        $search = trim((string) $request->query('search', ''));
+        $sortField = in_array($request->query('sort_field'), ['total', 'created_at'], true)
+            ? $request->query('sort_field')
+            : 'id';
+        $sortOrder = $request->query('sort_order') === 'asc' ? 'asc' : 'desc';
+
+        $sells = SellBar::where('event_id', $id)
+            ->when($request->filled('bar_store_id'), fn ($query) => $query->where('bar_store_id', (int) $request->query('bar_store_id')))
+            ->when($request->filled('barman_id'), fn ($query) => $query->where('user_id', (int) $request->query('barman_id')))
+            ->when($request->filled('method'), fn ($query) => $query->where('method', $request->query('method')))
+            ->when($request->filled('status'), fn ($query) => $query->where('status', (int) $request->query('status')))
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.$search.'%';
+                $query->where(function ($query) use ($like, $search) {
+                    $query->whereHas('user', fn ($barman) => $barman->where('name', 'like', $like))
+                        ->orWhereHas('selldetails.product', fn ($product) => $product->where('name', 'like', $like));
+                    if (ctype_digit($search)) {
+                        $query->orWhere('id', (int) $search);
+                    }
+                });
+            })
+            ->with(['user:id,name', 'barstore:id,name', 'selldetails:id,sell_id,product_id,qtd,price,total', 'selldetails.product:id,name'])
+            ->orderBy($sortField, $sortOrder)
+            ->orderBy('id', 'desc')
+            ->paginate($perPage);
+
+        return response()->json($sells);
+    }
+
+    public function bar_sales_export($event_id)
+    {
+        if ($denied = $this->denyEventAccess($event_id)) {
+            return $denied;
+        }
+
+        $event = Event::findOrFail($event_id);
+
+        return Excel::download(new BarSalesExport($event), 'vendas-bar-'.$event->id.'.xlsx');
+    }
+
+    /**
+     * SUM columns for the whole range plus today / this week / this month, as "alias", "alias_today", ...
+     */
+    private function periodSums(array $metrics): array
+    {
+        $now = Carbon::now();
+        $periods = [
+            'today' => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
+            'week' => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()],
+            'month' => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
+        ];
+
+        $columns = [];
+        $bindings = [];
+        foreach ($metrics as $alias => $column) {
+            $columns[] = "COALESCE(SUM({$column}), 0) as {$alias}";
+            foreach ($periods as $key => [$from, $to]) {
+                $columns[] = "COALESCE(SUM(CASE WHEN created_at BETWEEN ? AND ? THEN {$column} END), 0) as {$alias}_{$key}";
+                array_push($bindings, $from, $to);
+            }
+        }
+
+        return [implode(', ', $columns), $bindings];
+    }
+
+    /**
+     * Revenue per group for each day of the current month and each month of the current year.
+     */
+    private function revenueSeries($query, string $groupColumn): array
+    {
+        $now = Carbon::now();
+
+        $daily = (clone $query)
+            ->whereBetween('created_at', [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()])
+            ->selectRaw("{$groupColumn}, DAY(created_at) as bucket, SUM(total) as value")
+            ->groupBy($groupColumn, 'bucket')
+            ->get()
+            ->groupBy($groupColumn);
+
+        $monthly = (clone $query)
+            ->whereBetween('created_at', [$now->copy()->startOfYear(), $now->copy()->endOfYear()])
+            ->selectRaw("{$groupColumn}, MONTH(created_at) as bucket, SUM(total) as value")
+            ->groupBy($groupColumn, 'bucket')
+            ->get()
+            ->groupBy($groupColumn);
+
+        return [$daily, $monthly];
+    }
+
+    private function fillSeries($rows, int $length): array
+    {
+        $values = array_fill(1, $length, 0.0);
+        foreach ($rows ?? [] as $row) {
+            $values[(int) $row->bucket] = (float) $row->value;
+        }
+
+        return array_values($values);
     }
 
     public function convites($id){
@@ -571,77 +755,95 @@ class PromotorDashboardController extends Controller
             return $denied;
         }
 
-        $event = Event::find($event_id);
-        $sells = SellDetails::where('event_id', $event)->get();
-        $tickets_local = Sell::where('event_id',$event->id)->where('user_id',0)->get();
-        // $tickets_online = Sell::where('event_id',$event->id)->where('user_id','!=',0)->orWhere('user_id',null)->get();
+        $event = Event::with([
+            'user',
+            'city',
+            'province',
+            'tickets' => fn ($query) => $query->withCount('stockSells'),
+            'packages' => fn ($query) => $query->withCount('stockSells'),
+        ])->find($event_id);
 
-        $tickets_online = Sell::where('event_id', $event->id)
-        ->where(function($query) {
+        $online = function ($query) {
             $query->where('user_id', '!=', 0)
                 ->orWhereNull('user_id');
-        })
-        ->get();
+        };
 
+        $tickets_local = Sell::where('event_id', $event->id)->where('user_id', 0)->with('transaction')->get();
+        $tickets_online = Sell::where('event_id', $event->id)->where($online)->get();
 
-        // return $tickets_online;
+        $tickets_lote = $tickets_local->filter(fn (Sell $sell) => $sell->saleChannel() === 'lote');
+        $tickets_box_office = $tickets_local->reject(fn (Sell $sell) => $sell->saleChannel() === 'lote');
 
+        $lote_status = $tickets_lote->isEmpty()
+            ? collect()
+            : SellDetails::whereIn('sell_id', $tickets_lote->pluck('id'))
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
+        $lote_summary = [
+            'used' => (int) ($lote_status[SellDetails::STATUS_USED] ?? 0),
+            'unused' => (int) ($lote_status[SellDetails::STATUS_VALID] ?? 0),
+            'returned' => (int) ($lote_status[SellDetails::STATUS_RETURNED] ?? 0),
+        ];
+        $lote_summary['issued'] = array_sum($lote_summary);
 
-        $tickets_local_true = SellDetails::where('event_id',$event->id)->where('user_id',0)->where('status',1)->get();
-        $tickets_local_false = SellDetails::where('event_id',$event->id)->where('user_id',0)->where('status',0)->get();
-        $tickets_online_true = SellDetails::where('event_id', $event->id)->where('status',1)
-        ->where(function($query) {
-            $query->where('user_id', '!=', 0)
-                ->orWhereNull('user_id');
-        });
+        $tickets_local_validated = SellDetails::where('event_id', $event->id)->where('user_id', 0)->where('status', SellDetails::STATUS_USED)->count();
+        $tickets_local_pending = SellDetails::where('event_id', $event->id)->where('user_id', 0)->where('status', SellDetails::STATUS_VALID)->count();
+        $tickets_online_validated = SellDetails::where('event_id', $event->id)->where($online)->where('status', SellDetails::STATUS_USED)->count();
+        $tickets_online_pending = SellDetails::where('event_id', $event->id)->where($online)->where('status', SellDetails::STATUS_VALID)->count();
+        $tickets_returned = SellDetails::where('event_id', $event->id)->where('status', SellDetails::STATUS_RETURNED)->count();
 
-        $tickets_online_false = SellDetails::where('event_id', $event->id)->where('status',0)
-        ->where(function($query) {
-            $query->where('user_id', '!=', 0)
-                ->orWhereNull('user_id');
-        })
-        ->get();
-        $invites_online_true = SellDetails::where('event_id',$event->id)->where('user_id',55)->where('status',1)->get();
-        $invites_online_false = SellDetails::where('event_id',$event->id)->where('user_id',55)->where('status',0)->get();
+        $revenue_by_ticket = Sell::where('event_id', $event->id)
+            ->selectRaw('ticket_id, SUM(total) as total')
+            ->groupBy('ticket_id')
+            ->pluck('total', 'ticket_id');
 
-
-        $pending_tickets = SellDetails::where('event_id',$event->id)->where('status',1)->count();
-
-
-        $tickets_local_amount = 0;
-
-        
-        foreach($tickets_local as $item){
-            $tickets_local_amount =$tickets_local_amount + $item->qty*$item->price;
-        }
-
-      
-
-      
-       
         $pdf = Pdf::loadView(
-            'pdf.ticketreport', 
+            'pdf.ticketreport',
             compact(
                 'event',
                 'tickets_local',
                 'tickets_online',
-                'tickets_local_amount',
-                'tickets_local_true',
-                'tickets_local_false',
-                'tickets_online_true',
-                'tickets_online_false',
-                'invites_online_true',
-                'invites_online_false',
-                'pending_tickets',
-                'sells'
+                'tickets_lote',
+                'tickets_box_office',
+                'lote_summary',
+                'tickets_local_validated',
+                'tickets_local_pending',
+                'tickets_online_validated',
+                'tickets_online_pending',
+                'tickets_returned',
+                'revenue_by_ticket'
                 ))->setOptions([
             'defaultFont' => 'sans-serif',
             'isRemoteEnabled' => 'true'
-        ]);
-        return $pdf->setPaper('a4')->stream('invoice.pdf');
+        ])->setPaper('a4');
+
+        $pdf->render();
+        $canvas = $pdf->getDomPDF()->getCanvas();
+        $canvas->page_text(
+            $canvas->get_width() - 93,
+            $canvas->get_height() - 39,
+            'Página {PAGE_NUM} de {PAGE_COUNT}',
+            $pdf->getDomPDF()->getFontMetrics()->getFont('DejaVu Sans'),
+            6.5,
+            [0.525, 0.573, 0.631]
+        );
+
+        return $pdf->stream('relatorio-bilhetes-'.$event->id.'.pdf');
 
 
+    }
+
+    public function ticket_sales_export($event_id)
+    {
+        if ($denied = $this->denyEventAccess($event_id)) {
+            return $denied;
+        }
+
+        $event = Event::findOrFail($event_id);
+
+        return Excel::download(new TicketSalesExport($event), 'vendas-bilhetes-'.$event->id.'.xlsx');
     }
 
     public function bar_store_report($id){

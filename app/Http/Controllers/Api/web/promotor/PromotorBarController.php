@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api\web\promotor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\AuthorizesEventAccess;
 use App\Models\BarStore;
 use App\Models\Products;
 use Illuminate\Http\Request;
 
 class PromotorBarController extends Controller
 {
+    use AuthorizesEventAccess;
+
     /**
      * Display a listing of the resource.
      */
@@ -34,6 +37,10 @@ class PromotorBarController extends Controller
         //
         $data = $request->all();
 
+        if ($denied = $this->denyEventAccess($data['event_id'] ?? null)) {
+            return $denied;
+        }
+
         BarStore::create($data);
     }
 
@@ -43,7 +50,12 @@ class PromotorBarController extends Controller
     public function show(string $id)
     {
         //
-        $bar = BarStore::with('products')->find($id);
+        $bar = $this->findBar($id);
+        if (! $bar instanceof BarStore) {
+            return $bar;
+        }
+
+        $bar->load('products');
         return response()->json([
             "bar"=>$bar,
             "products"=>$bar->products
@@ -56,7 +68,11 @@ class PromotorBarController extends Controller
     public function edit(string $id)
     {
         //
-        $bar = BarStore::find($id);
+        $bar = $this->findBar($id);
+        if (! $bar instanceof BarStore) {
+            return $bar;
+        }
+
         return response()->json(["bar"=>$bar]);
     }
 
@@ -66,8 +82,12 @@ class PromotorBarController extends Controller
     public function update(Request $request, string $id)
     {
         //
-        $data = $request->all();
-        $bar = BarStore::find($id);
+        $bar = $this->findBar($id);
+        if (! $bar instanceof BarStore) {
+            return $bar;
+        }
+
+        $data = $request->except('event_id');
 
         $bar->update($data);
         return response()->json($bar);
@@ -79,7 +99,10 @@ class PromotorBarController extends Controller
     public function destroy(string $id)
     {
         //
-        $barstore = BarStore::findOrFail($id);
+        $barstore = $this->findBar($id);
+        if (! $barstore instanceof BarStore) {
+            return $barstore;
+        }
 
         $product = Products::where('bar_store_id',$barstore->id)->get();
 
@@ -92,7 +115,11 @@ class PromotorBarController extends Controller
         }
     }
     public function copy($id){
-        $bar = BarStore::find($id);
+        $bar = $this->findBar($id);
+        if (! $bar instanceof BarStore) {
+            return $bar;
+        }
+
         $newbar = BarStore::create([
             'name' => $bar->name.'-COPY',
             'event_id' => $bar->event_id,
@@ -110,5 +137,16 @@ class PromotorBarController extends Controller
         }
 
         return response()->noContent();
+    }
+
+    private function findBar(string $id)
+    {
+        $bar = BarStore::find($id);
+
+        if (! $bar) {
+            return response()->json(['message' => 'Bar não encontrado.'], 404);
+        }
+
+        return $this->denyEventAccess($bar->event_id) ?? $bar;
     }
 }

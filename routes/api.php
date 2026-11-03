@@ -196,6 +196,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('promotor-dashboard/{id}/bilhetes', [PromotorDashboardController::class, 'bilhetes']);
     Route::get('promotor-dashboard/{id}/pacotes', [PromotorDashboardController::class, 'pacotes']);
+    Route::get('promotor-dashboard/{id}/vendas', [PromotorDashboardController::class, 'vendas']);
+    Route::get('promotor-dashboard/{id}/bar', [PromotorDashboardController::class, 'bar']);
+    Route::get('promotor-dashboard/{id}/bar/vendas', [PromotorDashboardController::class, 'bar_vendas']);
     Route::get('promotor-dashboard/{id}/convites', [PromotorDashboardController::class, 'convites']);
     Route::get('promotor-dashboard/{id}/lineups', [PromotorDashboardController::class, 'lineups']);
     Route::get('promotor-dashboard/{id}/loja', [PromotorDashboardController::class, 'loja']);
@@ -204,6 +207,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('download-report/{id}/products', [PromotorDashboardController::class, 'bar_report']);
 
     Route::get('download-report/{id}/tickets', [PromotorDashboardController::class, 'ticket_report']);
+
+    Route::get('download-report/{id}/tickets/sales', [PromotorDashboardController::class, 'ticket_sales_export']);
+    Route::get('download-report/{id}/bar/sales', [PromotorDashboardController::class, 'bar_sales_export']);
 
     Route::get('download-report/{id}/shop', [PromotorDashboardController::class, 'shop_report']);
 
