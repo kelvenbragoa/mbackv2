@@ -12,13 +12,10 @@ use App\Support\TicketPdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class PromotorTicketBatchController extends Controller
 {
     use AuthorizesEventAccess;
-
-    public const SIZES = [100, 200, 300, 400, 500];
 
     public function index(string $ticketId)
     {
@@ -44,7 +41,6 @@ class PromotorTicketBatchController extends Controller
         return response()->json([
             'batches' => $batches,
             'available_quantity' => $ticket->availableQuantity(),
-            'sizes' => self::SIZES,
         ]);
     }
 
@@ -67,7 +63,7 @@ class PromotorTicketBatchController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'mobile' => ['nullable', 'string', 'max:30'],
-            'qty' => ['required', 'integer', Rule::in(self::SIZES)],
+            'qty' => ['required', 'integer', 'min:1'],
         ]);
 
         $qty = (int) $data['qty'];
