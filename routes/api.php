@@ -47,6 +47,8 @@ use App\Http\Controllers\Api\web\user\UserAgoraLiveController;
 use App\Http\Controllers\Api\web\user\LiveChatController;
 use App\Http\Controllers\Api\web\promotor\PromotorLiveChatController;
 use App\Http\Controllers\Api\MuxWebhookController;
+use App\Http\Controllers\Api\PayPayCheckoutController;
+use App\Http\Controllers\Api\PayPayWebhookController;
 use App\Http\Controllers\GlobalController;
 use App\Http\Controllers\Api\MediaController;
 // use App\Http\Middleware\Sanctum;
@@ -69,6 +71,7 @@ Route::resource('eventos', UserEventsController::class);
 Route::get('eventos/{id}/live', [UserLiveController::class, 'show']);
 Route::get('eventos/{id}/live-agora', [UserAgoraLiveController::class, 'show']);
 Route::post('webhooks/mux', [MuxWebhookController::class, 'handle'])->middleware('throttle:60,1');
+Route::post('webhooks/paypay', PayPayWebhookController::class)->middleware('throttle:60,1');
 Route::post('checkout/email-ticket', [UserCheckOutController::class, 'emailTicket'])->middleware('throttle:10,1');
 Route::resource('checkout', UserCheckOutController::class);
 Route::get('shop-checkout/{id}', [ShopCheckOutController::class, 'show']);
@@ -102,6 +105,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('meus-recibos/{id}', [UserShopOrdersController::class, 'show']);
     Route::get('meus-recibos/{id}/pdf', [UserShopOrdersController::class, 'pdf']);
     Route::get('eventos/{id}/live/playback', [UserLiveController::class, 'playback']);
+
+    // PayPay AO experimental (live tickets with price_aoa)
+    Route::post('paypay/checkout', [PayPayCheckoutController::class, 'store'])->middleware('throttle:10,1');
+    Route::get('paypay/orders/{id}', [PayPayCheckoutController::class, 'show'])->middleware('throttle:60,1');
 
     Route::get('promotor-eventos/{id}/live', [PromotorLiveController::class, 'show']);
     Route::post('promotor-eventos/{id}/live', [PromotorLiveController::class, 'store']);

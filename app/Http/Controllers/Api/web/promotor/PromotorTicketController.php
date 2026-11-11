@@ -36,6 +36,7 @@ class PromotorTicketController extends Controller
         $ticket = Ticket::create([
             'name'=>$data['name'],
             'price'=>$data['price'],
+            'price_aoa' => $this->normalizePriceAoa($data['price_aoa'] ?? null),
             'description'=>$data['description'],
             'event_id'=>$data['event_id'],
             'start_date'=>date('Y-m-d',strtotime($data['start_date'])),
@@ -48,6 +49,10 @@ class PromotorTicketController extends Controller
                 : null,
             'is_package'=>0,
             'is_live' => filter_var($data['is_live'] ?? false, FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
+            'valid_for_days' => $this->normalizeValidForDays(
+                $data['valid_for_days'] ?? null,
+                filter_var($data['is_live'] ?? false, FILTER_VALIDATE_BOOLEAN)
+            ),
 
         ]);
 
@@ -100,10 +105,47 @@ class PromotorTicketController extends Controller
             $data['is_live'] = filter_var($data['is_live'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
         }
 
+        if (array_key_exists('price_aoa', $data)) {
+            $data['price_aoa'] = $this->normalizePriceAoa($data['price_aoa']);
+        }
+
+        $isLive = array_key_exists('is_live', $data)
+            ? (bool) $data['is_live']
+            : (bool) $ticket->is_live;
+
+        if (array_key_exists('valid_for_days', $data) || array_key_exists('is_live', $data)) {
+            $data['valid_for_days'] = $this->normalizeValidForDays(
+                $data['valid_for_days'] ?? ($isLive ? $ticket->valid_for_days : null),
+                $isLive
+            );
+        }
+
         $ticket->update($data);
         return response()->json([
             "ticket"=>$ticket
         ]);
+    }
+
+    private function normalizePriceAoa(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $amount = round((float) $value, 2);
+
+        return $amount > 0 ? $amount : null;
+    }
+
+    private function normalizeValidForDays(mixed $value, bool $isLive): ?int
+    {
+        if (! $isLive || $value === null || $value === '') {
+            return null;
+        }
+
+        $days = (int) $value;
+
+        return $days > 0 ? $days : null;
     }
 
     /**

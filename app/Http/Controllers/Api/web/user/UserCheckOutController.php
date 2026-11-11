@@ -13,6 +13,7 @@ use App\Models\TemporaryTransaction;
 use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Notifications\TicketPaid;
+use App\Support\LiveTicketAccess;
 use App\Support\TicketFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -69,6 +70,14 @@ class UserCheckOutController extends Controller
         $liveBuyer = $this->assertLiveTicketsRequireLogin($request, $data['tickets'] ?? []);
         if ($liveBuyer) {
             $data['user_id'] = $liveBuyer->id;
+        }
+
+        $livePurchaseError = LiveTicketAccess::validatePurchase(
+            $liveBuyer ?? ($request->user('sanctum') ?? Auth::guard('sanctum')->user()),
+            $data['tickets'] ?? []
+        );
+        if ($livePurchaseError !== null) {
+            abort(422, $livePurchaseError);
         }
 
         $this->assertTicketFormAnswers($data['tickets'] ?? []);
@@ -168,6 +177,7 @@ class UserCheckOutController extends Controller
                                     'mobile'=>$data['customerMobile'],
                                     'user_id'=>$data['user_id'] ?? null,
                                     'form_answers' => $this->formAnswersForUnit($item, $i),
+                                    'access_ends_at' => LiveTicketAccess::accessEndsAtForTicketId((int) $item['id']),
                                 ]);
                             }
                             $order[] = $this->prepareOrderSell($sell);
@@ -282,6 +292,7 @@ class UserCheckOutController extends Controller
                         'mobile'=>$data['customerMobile'],
                         'user_id'=>$data['user_id'] ?? null,
                         'form_answers' => $this->formAnswersForUnit($item, $i),
+                        'access_ends_at' => LiveTicketAccess::accessEndsAtForTicketId((int) $item['id']),
                     ]);
                 }
                 $order[] = $this->prepareOrderSell($sell);
@@ -303,7 +314,7 @@ class UserCheckOutController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $id, Request $request)
     {
         $event = Event::with(['user', 'province', 'city', 'tickets', 'like', 'lineups', 'type'])
             ->where(function ($query) use ($id) {
@@ -330,9 +341,12 @@ class UserCheckOutController extends Controller
                 return $item;
             });
 
+        $user = $request->user('sanctum') ?? Auth::guard('sanctum')->user();
+
         return response()->json([
             'events' => $event,
             'tickets' => $tickets,
+            'live_access' => LiveTicketAccess::accessPayload($event, $user),
         ]);
     }
 
@@ -524,8 +538,7 @@ class UserCheckOutController extends Controller
                 abort(422, "O bilhete \"{$ticket->name}\" não tem quantidade suficiente. Disponível: {$available}.");
             }
 
-            $perOrder = (int) ($ticket->max_per_order ?? 0);
-            $perOrder = $perOrder > 0 ? $perOrder : 5;
+            $perOrder = $ticket->maxQuantityPerOrder();
             if ($quantity > $perOrder) {
                 abort(422, "Só podes comprar até {$perOrder} bilhete(s) de \"{$ticket->name}\" por compra.");
             }

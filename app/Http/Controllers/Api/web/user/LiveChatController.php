@@ -126,7 +126,12 @@ class LiveChatController extends Controller
         }
 
         if (! $event->canWatchLive(Auth::user())) {
-            return [null, response()->json(['message' => 'Precisas de um bilhete de live para participar no chat.'], 403)];
+            $user = Auth::user();
+            $message = $user && $event->hasExpiredLiveTicketFor($user)
+                ? 'O teu acesso à live expirou. Compra um novo bilhete para continuar a assistir.'
+                : 'Precisas de um bilhete de live para participar no chat.';
+
+            return [null, response()->json(['message' => $message], 403)];
         }
 
         return [$event, null];

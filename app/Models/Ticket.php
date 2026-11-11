@@ -14,7 +14,17 @@ class Ticket extends Model
 
     protected $casts = [
         'is_live' => 'boolean',
+        'price_aoa' => 'float',
+        'valid_for_days' => 'integer',
     ];
+
+    /**
+     * Max qty allowed in one checkout. Live passes are always 1.
+     */
+    public function maxQuantityPerOrder(): int
+    {
+        return \App\Support\LiveTicketAccess::maxQuantityPerOrder($this);
+    }
 
     public function event()
     {

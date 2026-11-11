@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\Sell;
 use App\Models\SellDetails;
 use App\Models\User;
+use App\Notifications\TicketConfirmed;
 use App\Notifications\TicketPaid;
 use App\Support\TicketFile;
 use Exception;
@@ -47,6 +48,42 @@ class GlobalController extends BaseController
             
         } catch (Exception $e) {
             
+        }
+    }
+
+    /**
+     * Teste WhatsApp ticket_confirmed (bilhete usado).
+     * GET /test-ticket-confirmed
+     * Altera $mobile / $ticketId abaixo conforme o teste.
+     */
+    public function testTicketConfirmed()
+    {
+        $mobile = '842648618';
+        $ticketId = 10985; // sell_details.id
+
+        $ticket = SellDetails::find($ticketId);
+        if (! $ticket) {
+            return response()->json([
+                'ok' => false,
+                'message' => "SellDetails {$ticketId} não existe. Altera \$ticketId em GlobalController::testTicketConfirmed.",
+            ], 404);
+        }
+
+        try {
+            $ticketc = Notification::send($mobile, new TicketConfirmed((int) $ticket->id, $mobile));
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'TicketConfirmed enviado',
+                'mobile' => $mobile,
+                'sell_details_id' => $ticket->id,
+                'ticket' => $ticketc,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 

@@ -7,7 +7,9 @@ use App\Http\Traits\PaginatesRequests;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Province;
+use App\Support\LiveTicketAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class UserEventsController extends Controller
 {
@@ -67,7 +69,7 @@ class UserEventsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $event = Event::with([
                 'user',
@@ -106,9 +108,12 @@ class UserEventsController extends Controller
             ->limit(4)
             ->get();
 
+        $user = $request->user('sanctum') ?? Auth::guard('sanctum')->user();
+
         return response()->json([
             'events' => $event,
             'recommended' => $recommended,
+            'live_access' => LiveTicketAccess::accessPayload($event, $user),
         ]);
     }
 

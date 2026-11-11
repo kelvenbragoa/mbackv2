@@ -18,7 +18,27 @@ class SellDetails extends Model
     protected $casts = [
         'form_answers' => 'array',
         'verified_at' => 'datetime',
+        'access_ends_at' => 'datetime',
     ];
+
+    public function hasActiveLiveAccess(?\Carbon\Carbon $at = null): bool
+    {
+        $this->loadMissing('ticket');
+
+        if (! $this->ticket || (int) $this->ticket->is_live !== 1) {
+            return false;
+        }
+
+        if ((int) $this->status === self::STATUS_RETURNED) {
+            return false;
+        }
+
+        if ($this->access_ends_at === null) {
+            return true;
+        }
+
+        return $this->access_ends_at->gt($at ?? now());
+    }
 
     public function scopeConsumingStock($query)
     {

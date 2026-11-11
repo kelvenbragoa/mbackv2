@@ -51,9 +51,11 @@ class UserLiveController extends Controller
         $user = Auth::user();
 
         if (! $event->canWatchLive($user)) {
-            return response()->json([
-                'message' => 'Precisas de um bilhete de live para ver esta transmissão.',
-            ], 403);
+            $message = $event->hasExpiredLiveTicketFor($user)
+                ? 'O teu acesso à live expirou. Compra um novo bilhete para continuar a assistir.'
+                : 'Precisas de um bilhete de live para ver esta transmissão.';
+
+            return response()->json(['message' => $message], 403);
         }
 
         $live = $this->mux->syncLiveStatus($event->live);

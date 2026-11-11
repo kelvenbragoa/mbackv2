@@ -13,6 +13,7 @@ use App\Models\TemporaryTransaction;
 use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Notifications\TicketPaid;
+use App\Support\LiveTicketAccess;
 use App\Support\TicketFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -85,6 +86,19 @@ class ClientCheckOutController extends Controller
                 'success' => false,
                 'message' => $liveError,
             ], 401);
+        }
+
+        $livePurchaseError = LiveTicketAccess::validatePurchase(
+            $request->user() ?? Auth::user(),
+            $data['tickets'] ?? []
+        );
+        if ($livePurchaseError !== null) {
+            $status = str_contains($livePurchaseError, 'Inicia sessão') ? 401 : 422;
+
+            return response()->json([
+                'success' => false,
+                'message' => $livePurchaseError,
+            ], $status);
         }
 
         $order = [];
@@ -181,6 +195,7 @@ class ClientCheckOutController extends Controller
                                     'mobile'=>$data['customerMobile'],
                                     'user_id'=>Auth::user()->id ?? null,
                                     'form_answers' => $this->formAnswersForUnit($item, $i),
+                                    'access_ends_at' => LiveTicketAccess::accessEndsAtForTicketId((int) $item['id']),
                                 ]);
                             }
                             $sell->load('selldetails');
@@ -300,6 +315,7 @@ class ClientCheckOutController extends Controller
                         'mobile'=>$data['customerMobile'],
                         'user_id'=>Auth::user()->id ?? null,
                         'form_answers' => $this->formAnswersForUnit($item, $i),
+                        'access_ends_at' => LiveTicketAccess::accessEndsAtForTicketId((int) $item['id']),
                     ]);
                 }
                 $sell->load('selldetails');
@@ -489,6 +505,11 @@ class ClientCheckOutController extends Controller
             $available = $ticket->availableQuantity();
             if ($quantity > $available) {
                 return "O bilhete \"{$ticket->name}\" não tem quantidade suficiente.";
+            }
+
+            $perOrder = $ticket->maxQuantityPerOrder();
+            if ($quantity > $perOrder) {
+                return "Só podes comprar até {$perOrder} bilhete(s) de \"{$ticket->name}\" por compra.";
             }
         }
 

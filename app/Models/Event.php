@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Sluggable\HasSlug;
@@ -138,6 +139,36 @@ class Event extends Model
             return false;
         }
 
+        return $this->activeLiveSellDetailsQuery($user)->exists();
+    }
+
+    /**
+     * Latest access_ends_at among active live passes.
+     * Null means active without expiry (or no active pass — check hasLiveTicketFor first).
+     */
+    public function liveAccessEndsAtFor(?User $user): ?Carbon
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $ends = $this->activeLiveSellDetailsQuery($user)
+            ->whereNotNull('access_ends_at')
+            ->max('access_ends_at');
+
+        if ($ends) {
+            return Carbon::parse($ends);
+        }
+
+        return null;
+    }
+
+    public function hasExpiredLiveTicketFor(?User $user): bool
+    {
+        if (! $user || $this->hasLiveTicketFor($user)) {
+            return false;
+        }
+
         return $this->sell_details()
             ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
@@ -145,9 +176,12 @@ class Event extends Model
                         $sell->where('user_id', $user->id);
                     });
             })
+            ->where('status', '!=', SellDetails::STATUS_RETURNED)
             ->whereHas('ticket', function ($ticket) {
                 $ticket->where('is_live', 1);
             })
+            ->whereNotNull('access_ends_at')
+            ->where('access_ends_at', '<=', now())
             ->exists();
     }
 
@@ -162,6 +196,25 @@ class Event extends Model
         }
 
         return $this->hasLiveTicketFor($user);
+    }
+
+    private function activeLiveSellDetailsQuery(User $user)
+    {
+        return $this->sell_details()
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('sell', function ($sell) use ($user) {
+                        $sell->where('user_id', $user->id);
+                    });
+            })
+            ->where('status', '!=', SellDetails::STATUS_RETURNED)
+            ->whereHas('ticket', function ($ticket) {
+                $ticket->where('is_live', 1);
+            })
+            ->where(function ($query) {
+                $query->whereNull('access_ends_at')
+                    ->orWhere('access_ends_at', '>', now());
+            });
     }
 
     public function review(){

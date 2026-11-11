@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\mobile\client;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Support\LiveTicketAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
@@ -158,6 +160,10 @@ class BaseController extends Controller
             'price'=>$event->price,
             // 'price'=> $event->tickets()->orderBy('price', 'asc')->first() ? $event->tickets()->orderBy('price', 'asc')->first()->price : 0,
             'tags' => [], // Implementar se necessário
+            'live_access' => LiveTicketAccess::accessPayload(
+                $event,
+                $userId ? User::find($userId) : null
+            ),
             'created_at' => $event->created_at->toISOString(),
             'updated_at' => $event->updated_at->toISOString()
         ];
@@ -199,10 +205,15 @@ class BaseController extends Controller
             'name' => $ticket->name,
             'description' => $ticket->description,
             'price' => (float) $ticket->price,
+            'price_aoa' => $ticket->price_aoa !== null && (float) $ticket->price_aoa > 0
+                ? (float) $ticket->price_aoa
+                : null,
             // Hide remaining stock when blocked by event/ticket dates.
             'available_quantity' => $exposeRemaining ? $availableQuantity : null,
             'total_quantity' => $exposeRemaining ? (int) $ticket->max_qtd : null,
-            'max_per_order' => $ticket->max_per_order !== null ? (int) $ticket->max_per_order : null,
+            'max_per_order' => (int) $ticket->is_live === 1
+                ? 1
+                : ($ticket->max_per_order !== null ? (int) $ticket->max_per_order : null),
             'start_date' => $ticket->start_date,
             'end_date' => $ticket->end_date,
             'start_time' => $ticket->start_time,
@@ -210,6 +221,7 @@ class BaseController extends Controller
             'is_on_sale' => $saleStatus === 'available',
             'sale_status' => $saleStatus,
             'is_live' => (bool) $ticket->is_live,
+            'valid_for_days' => $ticket->valid_for_days !== null ? (int) $ticket->valid_for_days : null,
             'form_fields' => $formFields->map(function ($field) {
                 return [
                     'id' => $field->id,
@@ -266,13 +278,19 @@ class BaseController extends Controller
                 'row' => null,
                 'seat' => null,
                 'is_live' => $isLive,
+                'valid_for_days' => $ticket && $ticket->valid_for_days !== null
+                    ? (int) $ticket->valid_for_days
+                    : null,
             ],
+            'access_ends_at' => $isLive && $sellDetails->access_ends_at
+                ? $sellDetails->access_ends_at->toIso8601String()
+                : null,
             'purchase' => [
                 'id' => 'PUR-' . date('Y') . '-' . str_pad($sell->id, 4, '0', STR_PAD_LEFT),
                 'total_amount' => (float) $sell->total,
                 'currency' => 'MT',
                 'payment_method' => 'credit_card', // Implementar se necessário
-                'purchased_at' => $sell->created_at->toISOString()
+                'purchased_at' => $sell->created_at->toIso8601String()
             ],
             'holder' => [
                 'name' => $sell->user->name,
