@@ -38,10 +38,23 @@ class WelcomePageController extends Controller
             ->paginate($this->perPage($request, 9))
             ->appends($request->query());
 
+        // Hero: evento marcado pelo admin; senão o primeiro da lista actual.
+        $heroEvent = Event::with(['user', 'province', 'city', 'type'])
+            ->withMin('tickets', 'price')
+            ->where('status_id', 2)
+            ->where('is_featured', true)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if (! $heroEvent) {
+            $heroEvent = $events->getCollection()->first();
+        }
+
         return response()->json([
             'categories' => $categories,
             'provinces' => $provinces,
             'events' => $events,
+            'hero_event' => $heroEvent,
         ]);
     }
 

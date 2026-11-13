@@ -184,6 +184,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('admin-dashboard', [AdminDashboardController::class, 'index']);
     Route::get('admin-eventos', [AdminEventsController::class, 'index']);
     Route::patch('admin-eventos/{id}/status', [AdminEventsController::class, 'updateStatus']);
+    Route::patch('admin-eventos/{id}/featured', [AdminEventsController::class, 'updateFeatured']);
     Route::get('admin-transacoes', [AdminTransactionController::class, 'index']);
     Route::get('admin-transacoes/{id}', [AdminTransactionController::class, 'show']);
     Route::post('admin-transacoes/{id}/confirmar', [AdminTransactionController::class, 'confirm']);

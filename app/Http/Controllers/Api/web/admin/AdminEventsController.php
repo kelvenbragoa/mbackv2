@@ -73,6 +73,49 @@ class AdminEventsController extends Controller
         ]);
     }
 
+    /**
+     * Mark/unmark the homepage hero event. Only one featured at a time.
+     */
+    public function updateFeatured(Request $request, string $id)
+    {
+        if ($denied = $this->denyNonAdmin()) {
+            return $denied;
+        }
+
+        $data = $request->validate([
+            'is_featured' => 'required|boolean',
+        ]);
+
+        $event = Event::find($id);
+
+        if (! $event) {
+            return response()->json(['message' => 'Evento não encontrado.'], 404);
+        }
+
+        if ($data['is_featured'] && (int) $event->status_id !== 2) {
+            return response()->json([
+                'message' => 'Só podes destacar um evento aprovado.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($event, $data) {
+            if ($data['is_featured']) {
+                Event::where('is_featured', true)
+                    ->where('id', '!=', $event->id)
+                    ->update(['is_featured' => false]);
+            }
+
+            $event->update(['is_featured' => (bool) $data['is_featured']]);
+        });
+
+        return response()->json([
+            'message' => $data['is_featured']
+                ? 'Evento definido como destaque no hero.'
+                : 'Destaque removido do evento.',
+            'event' => $event->fresh()->load(['status', 'province', 'city', 'category', 'type', 'user']),
+        ]);
+    }
+
     private function summary(): array
     {
         $counts = Event::select('status_id', DB::raw('COUNT(*) as total'))

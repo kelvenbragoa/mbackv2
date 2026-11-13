@@ -18,6 +18,7 @@ class Event extends Model
     protected $casts = [
         'latitude' => 'float',
         'longitude' => 'float',
+        'is_featured' => 'boolean',
     ];
 
     public function hasMapCoordinates(): bool
