@@ -37,7 +37,7 @@ class UserAuthController extends Controller
         $registerUserData = $request->validate([
             'name'=>'required|string',
             'email'=>'required|string|email|unique:users',
-            'mobile' => ['required', 'string', 'max:9','unique:users'],
+            'mobile' => ['required', 'string', 'regex:/^[0-9]{9,15}$/', 'unique:users'],
             'is_promotor'=>'required',
             'password'=>'required|min:8'
         ]);
