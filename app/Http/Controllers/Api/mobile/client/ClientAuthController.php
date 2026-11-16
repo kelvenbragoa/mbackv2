@@ -74,7 +74,7 @@ class ClientAuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Dados inválidos.',
+                'message' => 'Dados inválidos. ' . $validator->errors()->first(),
                 'errors' => $validator->errors(),
             ], 422);
         }
