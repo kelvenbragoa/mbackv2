@@ -103,7 +103,7 @@ class Event extends Model
             'tickets' => function ($tickets) {
                 $tickets->with('formFields')->withCount(['stockSells as sells_count']);
             },
-        ])->withCount(['sells', 'review'])->withAvg('review', 'rating');
+        ])->withCount(['sells', 'review']);
     }
 
     public function products(){
