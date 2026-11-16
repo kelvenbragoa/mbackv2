@@ -10,6 +10,7 @@ use App\Models\Province;
 use App\Support\LiveTicketAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class UserEventsController extends Controller
 {
@@ -20,34 +21,42 @@ class UserEventsController extends Controller
      */
     public function index(Request $request)
     {
-        $provinces = Province::orderBy('name', 'asc')->get();
-        $categories = Category::orderBy('name', 'asc')->get();
+        $payload = Cache::remember(
+            'web.eventos.'.md5(json_encode($request->query())),
+            30,
+            function () use ($request) {
+                $provinces = Province::orderBy('name', 'asc')->get();
+                $categories = Category::orderBy('name', 'asc')->get();
 
-        $events = Event::with(['user', 'province', 'city', 'type'])
-            ->withMin('tickets', 'price')
-            ->where('status_id', 2)
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $search = $request->query('search');
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->filled('province_id'), function ($query) use ($request) {
-                $query->where('province_id', $request->query('province_id'));
-            })
-            ->when($request->filled('category_id'), function ($query) use ($request) {
-                $query->where('main_category_id', $request->query('category_id'));
-            })
-            ->orderBy('end_date', 'desc')
-            ->paginate($this->perPage($request))
-            ->appends($request->query());
+                $events = Event::query()
+                    ->withPublicCatalog()
+                    ->where('status_id', 2)
+                    ->when($request->filled('search'), function ($query) use ($request) {
+                        $search = $request->query('search');
+                        $query->where(function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%")
+                                ->orWhere('address', 'like', "%{$search}%");
+                        });
+                    })
+                    ->when($request->filled('province_id'), function ($query) use ($request) {
+                        $query->where('province_id', $request->query('province_id'));
+                    })
+                    ->when($request->filled('category_id'), function ($query) use ($request) {
+                        $query->where('main_category_id', $request->query('category_id'));
+                    })
+                    ->orderBy('end_date', 'desc')
+                    ->paginate($this->perPage($request))
+                    ->appends($request->query());
 
-        return response()->json([
-            'provinces' => $provinces,
-            'categories' => $categories,
-            'events' => $events,
-        ]);
+                return [
+                    'provinces' => $provinces->toArray(),
+                    'categories' => $categories->toArray(),
+                    'events' => $events->toArray(),
+                ];
+            }
+        );
+
+        return response()->json($payload);
     }
 
     /**
@@ -72,18 +81,18 @@ class UserEventsController extends Controller
     public function show(Request $request, string $id)
     {
         $event = Event::with([
-                'user',
-                'province',
-                'city',
+                'user:id,name,company_name,slug,email,mobile,image',
+                'province:id,name',
+                'city:id,name',
                 'tickets',
-                'like',
                 'lineups',
-                'type',
-                'category',
+                'type:id,name',
+                'category:id,name',
                 'shopProducts' => function ($query) {
                     $query->active()->with('variants');
                 },
             ])
+            ->withCount('like')
             ->where(function ($query) use ($id) {
                 $query->where('slug', $id)->orWhere('id', $id);
             })
@@ -100,11 +109,16 @@ class UserEventsController extends Controller
             $event->shopProducts->map->toPublicArray()->values()
         );
 
-        $recommended = Event::with(['user', 'province', 'city', 'type'])
-            ->withMin('tickets', 'price')
+        $recommendedBase = Event::query()
             ->where('status_id', 2)
-            ->where('id', '!=', $event->id)
-            ->inRandomOrder()
+            ->where('id', '!=', $event->id);
+        $recommendedTotal = (clone $recommendedBase)->count();
+        $recommendedOffset = $recommendedTotal > 4 ? random_int(0, $recommendedTotal - 4) : 0;
+
+        $recommended = (clone $recommendedBase)
+            ->withPublicCatalog()
+            ->orderByDesc('end_date')
+            ->offset($recommendedOffset)
             ->limit(4)
             ->get();
 

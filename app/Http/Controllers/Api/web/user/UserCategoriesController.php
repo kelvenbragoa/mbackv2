@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Event;
 use App\Models\Province;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class UserCategoriesController extends Controller
 {
@@ -50,31 +51,39 @@ class UserCategoriesController extends Controller
             ], 404);
         }
 
-        $provinces = Province::orderBy('name', 'asc')->get();
+        $payload = Cache::remember(
+            'web.category.'.$category->id.'.'.md5(json_encode($request->query())),
+            30,
+            function () use ($request, $category) {
+                $provinces = Province::orderBy('name', 'asc')->get();
 
-        $events = Event::with(['user', 'province', 'city', 'type'])
-            ->withMin('tickets', 'price')
-            ->where('status_id', 2)
-            ->where('main_category_id', $category->id)
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $search = $request->query('search');
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->filled('province_id'), function ($query) use ($request) {
-                $query->where('province_id', $request->query('province_id'));
-            })
-            ->orderBy('end_date', 'desc')
-            ->paginate($this->perPage($request))
-            ->appends($request->query());
+                $events = Event::query()
+                    ->withPublicCatalog()
+                    ->where('status_id', 2)
+                    ->where('main_category_id', $category->id)
+                    ->when($request->filled('search'), function ($query) use ($request) {
+                        $search = $request->query('search');
+                        $query->where(function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%")
+                                ->orWhere('address', 'like', "%{$search}%");
+                        });
+                    })
+                    ->when($request->filled('province_id'), function ($query) use ($request) {
+                        $query->where('province_id', $request->query('province_id'));
+                    })
+                    ->orderBy('end_date', 'desc')
+                    ->paginate($this->perPage($request))
+                    ->appends($request->query());
 
-        return response()->json([
-            'category' => $category,
-            'provinces' => $provinces,
-            'events' => $events,
-        ]);
+                return [
+                    'category' => $category->toArray(),
+                    'provinces' => $provinces->toArray(),
+                    'events' => $events->toArray(),
+                ];
+            }
+        );
+
+        return response()->json($payload);
     }
 
     /**

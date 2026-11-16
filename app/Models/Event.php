@@ -106,6 +106,19 @@ class Event extends Model
         ])->withCount(['sells', 'review']);
     }
 
+    /**
+     * Card payload for the public website: place, promoter and cheapest ticket.
+     */
+    public function scopeWithPublicCatalog($query)
+    {
+        return $query->with([
+            'user:id,name,company_name,slug',
+            'province:id,name',
+            'city:id,name',
+            'type:id,name',
+        ])->withMin('tickets', 'price');
+    }
+
     public function products(){
         return $this->hasMany('App\Models\Products', 'event_id', 'id')->orderBy('name','asc');
     }

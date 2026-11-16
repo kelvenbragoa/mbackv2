@@ -316,7 +316,12 @@ class UserCheckOutController extends Controller
      */
     public function show(string $id, Request $request)
     {
-        $event = Event::with(['user', 'province', 'city', 'tickets', 'like', 'lineups', 'type'])
+        $event = Event::with([
+                'user:id,name,company_name,slug,email,mobile',
+                'province:id,name',
+                'city:id,name',
+                'type:id,name',
+            ])
             ->where(function ($query) use ($id) {
                 $query->where('slug', $id)->orWhere('id', $id);
             })
