@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Event;
+use App\Models\SellDetails;
 use App\Models\Ticket;
 use App\Models\User;
 use Carbon\Carbon;
@@ -125,5 +126,53 @@ class LiveTicketAccess
             'ends_at' => $ends?->toIso8601String(),
             'has_expiry' => $ends !== null,
         ];
+    }
+
+    /**
+     * Same payload as accessPayload(), for a page of events in one query.
+     *
+     * @param  array<int, int>  $eventIds
+     * @return array<int, array{active: bool, ends_at: ?string, has_expiry: bool}>
+     */
+    public static function payloadsFor(int $userId, array $eventIds): array
+    {
+        $eventIds = array_values(array_unique(array_filter(array_map('intval', $eventIds))));
+
+        if ($userId <= 0 || $eventIds === []) {
+            return [];
+        }
+
+        $rows = SellDetails::query()
+            ->selectRaw('sell_details.event_id, MAX(sell_details.access_ends_at) as ends_at')
+            ->whereIn('sell_details.event_id', $eventIds)
+            ->where('sell_details.status', '!=', SellDetails::STATUS_RETURNED)
+            ->where(function ($query) use ($userId) {
+                $query->where('sell_details.user_id', $userId)
+                    ->orWhereHas('sell', function ($sell) use ($userId) {
+                        $sell->where('user_id', $userId);
+                    });
+            })
+            ->whereHas('ticket', function ($ticket) {
+                $ticket->where('is_live', 1);
+            })
+            ->where(function ($query) {
+                $query->whereNull('sell_details.access_ends_at')
+                    ->orWhere('sell_details.access_ends_at', '>', now());
+            })
+            ->groupBy('sell_details.event_id')
+            ->get();
+
+        $payloads = [];
+
+        foreach ($rows as $row) {
+            $ends = $row->ends_at ? Carbon::parse($row->ends_at)->toIso8601String() : null;
+            $payloads[(int) $row->event_id] = [
+                'active' => true,
+                'ends_at' => $ends,
+                'has_expiry' => $ends !== null,
+            ];
+        }
+
+        return $payloads;
     }
 }

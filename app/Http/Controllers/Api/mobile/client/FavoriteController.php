@@ -28,18 +28,13 @@ class FavoriteController extends BaseController
             $favoriteEventIds = LikeEvent::where('user_id', $user->id)
                                         ->pluck('event_id');
 
-            $events = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like'
-            ])->whereIn('id', $favoriteEventIds)
+            $events = Event::withMobileCatalog()
+              ->whereIn('id', $favoriteEventIds)
               ->whereIn('status_id', [1,2,3])
               ->orderBy('created_at', 'desc')
               ->paginate($perPage);
 
-            $formattedEvents = $events->getCollection()->map(function ($event) use ($user) {
-                return $this->formatEvent($event, $user->id);
-            });
-
-            $events->setCollection($formattedEvents);
+            $events->setCollection($this->presentEvents($events, $user->id));
 
             return $this->sendResponse(
                 ['events' => $events->items()],

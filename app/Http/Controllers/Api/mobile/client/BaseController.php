@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\mobile\client;
 
 use App\Http\Controllers\Controller;
+use App\Models\FavoriteEvent;
 use App\Models\User;
 use App\Support\LiveTicketAccess;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class BaseController extends Controller
@@ -71,9 +73,101 @@ class BaseController extends Controller
     }
 
     /**
+     * @return array{active: bool, ends_at: null, has_expiry: bool}
+     */
+    protected function inactiveLiveAccess(): array
+    {
+        return [
+            'active' => false,
+            'ends_at' => null,
+            'has_expiry' => false,
+        ];
+    }
+
+    /**
+     * Format a page of events with one favorites query and one live-access query.
+     */
+    protected function presentEvents($events, $userId = null): Collection
+    {
+        $collection = $events instanceof \Illuminate\Contracts\Pagination\Paginator
+            ? $events->getCollection()
+            : collect($events);
+
+        $ids = $collection->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $favoriteIds = $this->favoriteIdLookup($userId, $ids);
+        $liveAccess = $userId ? LiveTicketAccess::payloadsFor((int) $userId, $ids) : [];
+        $inactive = $this->inactiveLiveAccess();
+
+        return $collection->map(function ($event) use ($favoriteIds, $liveAccess, $inactive) {
+            $id = (int) $event->id;
+
+            return $this->formatEvent($event, null, [
+                'is_favorite' => isset($favoriteIds[$id]),
+                'live_access' => $liveAccess[$id] ?? $inactive,
+            ]);
+        })->values();
+    }
+
+    /**
+     * Public catalog rows. Viewer fields are filled in afterwards so the page can be cached.
+     */
+    protected function formatCatalogPage($events): array
+    {
+        $inactive = $this->inactiveLiveAccess();
+        $collection = $events instanceof \Illuminate\Contracts\Pagination\Paginator
+            ? $events->getCollection()
+            : collect($events);
+
+        return $collection->map(function ($event) use ($inactive) {
+            return $this->formatEvent($event, null, [
+                'is_favorite' => false,
+                'live_access' => $inactive,
+            ]);
+        })->values()->all();
+    }
+
+    protected function applyViewerState(array $events, $userId): array
+    {
+        if (! $userId || $events === []) {
+            return $events;
+        }
+
+        $ids = array_map(fn ($event) => (int) ($event['id'] ?? 0), $events);
+        $favoriteIds = $this->favoriteIdLookup($userId, $ids);
+        $liveAccess = LiveTicketAccess::payloadsFor((int) $userId, $ids);
+        $inactive = $this->inactiveLiveAccess();
+
+        foreach ($events as &$event) {
+            $id = (int) ($event['id'] ?? 0);
+            $event['is_favorite'] = isset($favoriteIds[$id]);
+            $event['live_access'] = $liveAccess[$id] ?? $inactive;
+        }
+
+        return $events;
+    }
+
+    /**
+     * @param  array<int, int>  $eventIds
+     * @return array<int, true>
+     */
+    protected function favoriteIdLookup($userId, array $eventIds): array
+    {
+        if (! $userId || $eventIds === []) {
+            return [];
+        }
+
+        return FavoriteEvent::query()
+            ->where('user_id', $userId)
+            ->whereIn('event_id', $eventIds)
+            ->pluck('event_id')
+            ->mapWithKeys(fn ($id) => [(int) $id => true])
+            ->all();
+    }
+
+    /**
      * Format event data for API response.
      */
-    protected function formatEvent($event, $userId = null): array
+    protected function formatEvent($event, $userId = null, array $overrides = []): array
     {
         $tickets = $event->tickets;
 
@@ -93,22 +187,37 @@ class BaseController extends Controller
             $priceRange['max'] = $prices->max();
         }
 
-        // Verificar se é favorito do usuário
-        $isFavorite = false;
-        if ($userId) {
-            $isFavorite = \App\Models\FavoriteEvent::where('user_id', $userId)
-                                                  ->where('event_id', $event->id)
-                                                  ->exists();
+        if (array_key_exists('is_favorite', $overrides)) {
+            $isFavorite = (bool) $overrides['is_favorite'];
+        } else {
+            $isFavorite = false;
+            if ($userId) {
+                $isFavorite = FavoriteEvent::where('user_id', $userId)
+                    ->where('event_id', $event->id)
+                    ->exists();
+            }
         }
 
-        // Verificar se está esgotado
-        $isSoldOut = $tickets->sum('max_qtd') <= $event->sells->count();
+        // Same rule as before: capacity against number of orders, counted in SQL when available.
+        $soldOrders = array_key_exists('sells_count', $event->getAttributes())
+            ? (int) $event->getAttributes()['sells_count']
+            : $event->sells->count();
+        $isSoldOut = $tickets->sum('max_qtd') <= $soldOrders;
 
-        // Calcular avaliação média
-        $rating = [
-            'average' => $event->review->avg('rating') ?? 0,
-            'total_reviews' => $event->review->count()
-        ];
+        if (array_key_exists('review_count', $event->getAttributes())) {
+            $rating = [
+                'average' => (float) ($event->review_avg_rating ?? 0),
+                'total_reviews' => (int) $event->review_count,
+            ];
+        } else {
+            $rating = [
+                'average' => $event->review->avg('rating') ?? 0,
+                'total_reviews' => $event->review->count()
+            ];
+        }
+
+        $cheapest = $tickets->sortBy(fn ($ticket) => (string) $ticket->price)->first();
+        $price = $cheapest ? (int) $cheapest->price : 0;
 
         $organizer = $event->user;
         $organizerName = $organizer?->company_name ?: $organizer?->name;
@@ -157,10 +266,9 @@ class BaseController extends Controller
             'is_favorite' => $isFavorite,
             'is_sold_out' => $isSoldOut,
             'rating' => $rating,
-            'price'=>$event->price,
-            // 'price'=> $event->tickets()->orderBy('price', 'asc')->first() ? $event->tickets()->orderBy('price', 'asc')->first()->price : 0,
+            'price'=>$price,
             'tags' => [], // Implementar se necessário
-            'live_access' => LiveTicketAccess::accessPayload(
+            'live_access' => $overrides['live_access'] ?? LiveTicketAccess::accessPayload(
                 $event,
                 $userId ? User::find($userId) : null
             ),
@@ -180,7 +288,9 @@ class BaseController extends Controller
             'icon' => 'music', // Default icon
             'color' => '#FF6B6B', // Default color  
             'image_url' => $category->image ? asset('storage/' . $category->image) : null,
-            'events_count' => $category->events->count(),
+            'events_count' => array_key_exists('events_count', $category->getAttributes())
+                ? (int) $category->events_count
+                : $category->events->count(),
             'is_active' => true
         ];
     }

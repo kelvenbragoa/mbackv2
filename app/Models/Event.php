@@ -90,6 +90,22 @@ class Event extends Model
         return $this->hasMany('App\Models\Sell', 'event_id', 'id');
     }
 
+    /**
+     * List/detail payload for the mobile apps: counts instead of every order row.
+     */
+    public function scopeWithMobileCatalog($query)
+    {
+        return $query->with([
+            'category:id,name',
+            'city:id,name',
+            'province:id,name',
+            'user',
+            'tickets' => function ($tickets) {
+                $tickets->with('formFields')->withCount(['stockSells as sells_count']);
+            },
+        ])->withCount(['sells', 'review'])->withAvg('review', 'rating');
+    }
+
     public function products(){
         return $this->hasMany('App\Models\Products', 'event_id', 'id')->orderBy('name','asc');
     }

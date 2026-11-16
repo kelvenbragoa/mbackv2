@@ -8,45 +8,48 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class EventController extends BaseController
 {
+    /** Home lists are the same for everyone except favorite and live access. */
+    private const CATALOG_CACHE_SECONDS = 30;
+
     /**
      * Get featured events for home screen.
      */
     public function featured(Request $request): JsonResponse
     {
         try {
-            $limit = min($request->get('limit', 10), 50);
+            $limit = min((int) $request->get('limit', 10), 50);
             $categoryId = $request->get('category_id');
+            $page = max((int) $request->get('page', 1), 1);
 
-            $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
-            ])->where('status_id', 2);
+            $payload = Cache::remember(
+                'mobile.events.featured.'.md5(json_encode([$categoryId, $limit, $page])),
+                self::CATALOG_CACHE_SECONDS,
+                function () use ($limit, $categoryId) {
+                    $query = $this->catalogQuery();
 
-            if ($categoryId) {
-                $query->where('main_category_id', $categoryId);
-            }
+                    if ($categoryId) {
+                        $query->where('main_category_id', $categoryId);
+                    }
 
-            // Ordernar por data mais próxima
-            // $query->where('start_date', '>=', now()->format('Y-m-d'))
-            //       ->orderBy('start_date', 'asc');
-            $query->orderBy('id', 'desc');
+                    $query->orderBy('id', 'desc');
+                    $events = $query->paginate($limit);
 
-            $events = $query->paginate($limit);
-            
-
-            $formattedEvents = $events->getCollection()->map(function ($event) {
-                return $this->formatEvent($event, Auth::id());
-            });
-
-            $events->setCollection($formattedEvents);
+                    return [
+                        'events' => $this->formatCatalogPage($events),
+                        'pagination' => $this->formatPagination($events),
+                    ];
+                }
+            );
 
             return $this->sendResponse(
-                ['events' => $events->items()],
+                ['events' => $this->applyViewerState($payload['events'], Auth::id())],
                 'Eventos em destaque recuperados com sucesso',
-                $this->formatPagination($events)
+                $payload['pagination']
             );
 
         } catch (\Exception $e) {
@@ -63,35 +66,34 @@ class EventController extends BaseController
             $lat = $request->get('lat');
             $lng = $request->get('lng');
             $radius = $request->get('radius', 25);
-            $limit = min($request->get('limit', 20), 100);
+            $limit = min((int) $request->get('limit', 20), 100);
+            $page = max((int) $request->get('page', 1), 1);
+            $userCity = ($lat && $lng) ? Auth::user()?->city_id : null;
 
-            $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
-            ])->where('status_id', 2)
-              ->where('start_date', '>=', now()->format('Y-m-d'));
+            $payload = Cache::remember(
+                'mobile.events.upcoming.'.md5(json_encode([$userCity, $radius, $limit, $page])),
+                self::CATALOG_CACHE_SECONDS,
+                function () use ($limit, $userCity) {
+                    $query = $this->catalogQuery()
+                        ->where('start_date', '>=', now()->format('Y-m-d'));
 
-            // Se tiver coordenadas, filtrar por cidade (simplificação)
-            if ($lat && $lng) {
-                // Por enquanto, vamos filtrar por cidade do usuário
-                // Em uma implementação completa, usaria cálculo de distância
-                $userCity = Auth::user()?->city_id;
-                if ($userCity) {
-                    $query->where('city_id', $userCity);
+                    if ($userCity) {
+                        $query->where('city_id', $userCity);
+                    }
+
+                    $events = $query->orderBy('start_date', 'desc')->paginate($limit);
+
+                    return [
+                        'events' => $this->formatCatalogPage($events),
+                        'pagination' => $this->formatPagination($events),
+                    ];
                 }
-            }
-
-            $events = $query->orderBy('start_date', 'desc')->paginate($limit);
-
-            $formattedEvents = $events->getCollection()->map(function ($event) {
-                return $this->formatEvent($event, Auth::id());
-            });
-
-            $events->setCollection($formattedEvents);
+            );
 
             return $this->sendResponse(
-                ['events' => $events->items()],
+                ['events' => $this->applyViewerState($payload['events'], Auth::id())],
                 'Próximos eventos recuperados com sucesso',
-                $this->formatPagination($events)
+                $payload['pagination']
             );
 
         } catch (\Exception $e) {
@@ -106,39 +108,42 @@ class EventController extends BaseController
     {
         try {
             $limit = min((int) $request->get('limit', 200), 300);
+            $categoryId = $request->get('category_id');
+            $city = $request->get('city');
+            $cityId = $request->get('city_id');
 
-            $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
-            ])
-                // ->whereIn('status_id', [1, 2, 3])
-                ->where('status_id', 2)
-                ->whereNotNull('latitude')
-                ->whereNotNull('longitude')
-                ->where('latitude', '!=', 0)
-                ->where('longitude', '!=', 0);
+            $events = Cache::remember(
+                'mobile.events.map.'.md5(json_encode([$limit, $categoryId, $city, $cityId])),
+                self::CATALOG_CACHE_SECONDS,
+                function () use ($limit, $categoryId, $city, $cityId) {
+                    $query = $this->catalogQuery()
+                        ->whereNotNull('latitude')
+                        ->whereNotNull('longitude')
+                        ->where('latitude', '!=', 0)
+                        ->where('longitude', '!=', 0);
 
-            if ($categoryId = $request->get('category_id')) {
-                $query->where('main_category_id', $categoryId);
-            }
+                    if ($categoryId) {
+                        $query->where('main_category_id', $categoryId);
+                    }
 
-            if ($city = $request->get('city')) {
-                $query->whereHas('city', function (Builder $q) use ($city) {
-                    $q->where('name', 'like', "%{$city}%");
-                });
-            }
+                    if ($city) {
+                        $query->whereHas('city', function (Builder $q) use ($city) {
+                            $q->where('name', 'like', "%{$city}%");
+                        });
+                    }
 
-            if ($cityId = $request->get('city_id')) {
-                $query->where('city_id', $cityId);
-            }
+                    if ($cityId) {
+                        $query->where('city_id', $cityId);
+                    }
 
-            $events = $query->orderBy('start_date', 'desc')->limit($limit)->get();
-
-            $formattedEvents = $events->map(function ($event) {
-                return $this->formatEvent($event, Auth::id());
-            });
+                    return $this->formatCatalogPage(
+                        $query->orderBy('start_date', 'desc')->limit($limit)->get()
+                    );
+                }
+            );
 
             return $this->sendResponse(
-                ['events' => $formattedEvents->values()],
+                ['events' => $this->applyViewerState($events, Auth::id())],
                 'Eventos do mapa recuperados com sucesso'
             );
         } catch (\Exception $e) {
@@ -152,9 +157,7 @@ class EventController extends BaseController
     public function search(Request $request): JsonResponse
     {
         try {
-            $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
-            ])->where('status_id', 2);
+            $query = $this->catalogQuery();
 
             // Filtro por texto
             if ($search = $request->get('q')) {
@@ -230,12 +233,7 @@ class EventController extends BaseController
 
             $perPage = min($request->get('per_page', 20), 100);
             $events = $query->paginate($perPage);
-
-            $formattedEvents = $events->getCollection()->map(function ($event) {
-                return $this->formatEvent($event, Auth::id());
-            });
-
-            $events->setCollection($formattedEvents);
+            $events->setCollection($this->presentEvents($events, Auth::id()));
 
             return $this->sendResponse(
                 ['events' => $events->items()],
@@ -342,18 +340,19 @@ class EventController extends BaseController
     public function show(Request $request, $id): JsonResponse
     {
         try {
-            $event = Event::with([
-                'category', 'city', 'province', 'tickets.sells', 'tickets.formFields', 'sells', 'review', 'like', 'lineups', 'user',
-                'shopProducts' => function ($query) {
-                    $query->active()->with('variants');
-                },
-            ])->find($id);
+            $event = Event::withMobileCatalog()
+                ->with([
+                    'shopProducts' => function ($query) {
+                        $query->active()->with('variants');
+                    },
+                ])
+                ->find($id);
 
             if (!$event) {
                 return $this->sendError('Evento não encontrado', [], 404);
             }
 
-            $formattedEvent = $this->formatEvent($event, Auth::id());
+            $formattedEvent = $this->presentEvents(collect([$event]), Auth::id())->first();
 
             return $this->sendResponse(
                 ['event' => $formattedEvent],
@@ -435,12 +434,11 @@ class EventController extends BaseController
             $sortOrder = $request->get('sort_order', 'desc');
 
             // Buscar eventos favoritos com relacionamentos usando leftJoin para evitar ambiguidade
-            $query = Event::with([
-                'category', 'city', 'province', 'tickets', 'sells', 'review', 'like', 'user',
-            ])
+            $query = Event::query()
             ->leftJoin('favorite_events', 'events.id', '=', 'favorite_events.event_id')
             ->where('favorite_events.user_id', $user->id)
-            ->select('events.*', 'favorite_events.created_at as favorited_at'); // Evitar ambiguidade na coluna id
+            ->select('events.*', 'favorite_events.created_at as favorited_at')
+            ->withMobileCatalog();
 
             // Aplicar ordenação
             switch ($sortBy) {
@@ -479,11 +477,7 @@ class EventController extends BaseController
                 );
             }
 
-            $formattedEvents = $events->getCollection()->map(function ($event) use ($user) {
-                return $this->formatEvent($event, $user->id);
-            });
-
-            $events->setCollection($formattedEvents);
+            $events->setCollection($this->presentEvents($events, $user->id));
 
             // Contar total de favoritos do usuário
             $totalFavorites = FavoriteEvent::where('user_id', $user->id)->count();
@@ -502,5 +496,8 @@ class EventController extends BaseController
         }
     }
 
-
+    private function catalogQuery(): Builder
+    {
+        return Event::query()->withMobileCatalog()->where('status_id', 2);
+    }
 }

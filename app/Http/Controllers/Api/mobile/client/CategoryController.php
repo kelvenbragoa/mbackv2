@@ -14,7 +14,7 @@ class CategoryController extends BaseController
     public function index(Request $request): JsonResponse
     {
         try {
-            $categories = Category::with('events')->get();
+            $categories = Category::withCount('events')->get();
 
             $formattedCategories = $categories->map(function ($category) {
                 return $this->formatCategory($category);
@@ -36,7 +36,7 @@ class CategoryController extends BaseController
     public function show(Request $request, $id): JsonResponse
     {
         try {
-            $category = Category::with('events')->find($id);
+            $category = Category::withCount('events')->find($id);
 
             if (!$category) {
                 return $this->sendError('Categoria não encontrada', [], 404);
@@ -60,7 +60,7 @@ class CategoryController extends BaseController
     public function events(Request $request, $id): JsonResponse
     {
         try {
-            $category = Category::find($id);
+            $category = Category::withCount('events')->find($id);
 
             if (!$category) {
                 return $this->sendError('Categoria não encontrada', [], 404);
@@ -69,17 +69,13 @@ class CategoryController extends BaseController
             $perPage = min($request->get('per_page', 20), 100);
             
             $events = $category->events()
-                              ->with(['city', 'province', 'tickets', 'sells', 'review', 'like'])
+                              ->withMobileCatalog()
                               ->whereIn('status_id', [1,2,3])
                               ->where('start_date', '>=', now()->format('Y-m-d'))
                               ->orderBy('start_date', 'asc')
                               ->paginate($perPage);
 
-            $formattedEvents = $events->getCollection()->map(function ($event) {
-                return $this->formatEvent($event, \Illuminate\Support\Facades\Auth::id());
-            });
-
-            $events->setCollection($formattedEvents);
+            $events->setCollection($this->presentEvents($events, \Illuminate\Support\Facades\Auth::id()));
 
             return $this->sendResponse(
                 [
