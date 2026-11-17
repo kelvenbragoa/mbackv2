@@ -24,4 +24,9 @@ class AgoraLiveViewer extends Model
     {
         return $this->belongsTo(AgoraLiveSession::class, 'agora_live_session_id');
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

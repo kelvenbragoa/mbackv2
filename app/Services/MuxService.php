@@ -111,6 +111,7 @@ class MuxService
 
         if ($status && $status !== $live->status) {
             $live->update(['status' => $status]);
+            $live->syncAudienceSession();
             Cache::forget($cacheKey);
         }
 

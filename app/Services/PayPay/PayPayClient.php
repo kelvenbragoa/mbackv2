@@ -123,7 +123,8 @@ class PayPayClient
     {
         $path = $this->cfg[$name . '_path'] ?? null;
         if ($path) {
-            $content = @file_get_contents((string) $path);
+            $path = $this->absoluteKeyPath((string) $path);
+            $content = @file_get_contents($path);
             if ($content === false) {
                 throw new RuntimeException("PayPay: cannot read {$name} file");
             }
@@ -134,5 +135,16 @@ class PayPayClient
             throw new RuntimeException("PayPay: {$name} is not configured");
         }
         return (string) $inline;
+    }
+
+    /** Relative paths in .env are resolved from the project root. `artisan serve` runs with cwd = public/. */
+    private function absoluteKeyPath(string $path): string
+    {
+        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+        $isAbsolute = str_starts_with($path, DIRECTORY_SEPARATOR)
+            || str_starts_with($path, '\\')
+            || (strlen($path) > 2 && ctype_alpha($path[0]) && $path[1] === ':');
+
+        return $isAbsolute ? $path : base_path($path);
     }
 }

@@ -51,6 +51,7 @@ class MuxWebhookController extends Controller
 
         if ($status && $live->status !== $status) {
             $live->update(['status' => $status]);
+            $live->syncAudienceSession();
         }
 
         return response()->noContent();

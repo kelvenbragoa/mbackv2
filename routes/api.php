@@ -105,6 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('meus-recibos/{id}', [UserShopOrdersController::class, 'show']);
     Route::get('meus-recibos/{id}/pdf', [UserShopOrdersController::class, 'pdf']);
     Route::get('eventos/{id}/live/playback', [UserLiveController::class, 'playback']);
+    Route::post('eventos/{id}/live/presence', [UserLiveController::class, 'presence'])->middleware('throttle:10,1');
 
     // PayPay AO experimental (live tickets with price_aoa)
     Route::post('paypay/checkout', [PayPayCheckoutController::class, 'store'])->middleware('throttle:10,1');
@@ -113,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('promotor-eventos/{id}/live', [PromotorLiveController::class, 'show']);
     Route::post('promotor-eventos/{id}/live', [PromotorLiveController::class, 'store']);
     Route::get('promotor-eventos/{id}/live/playback', [PromotorLiveController::class, 'playback']);
+    Route::get('promotor-eventos/{id}/live/audience', [PromotorLiveController::class, 'audience']);
     Route::delete('promotor-eventos/{id}/live', [PromotorLiveController::class, 'destroy']);
 
     Route::get('eventos/{id}/live-agora/join', [UserAgoraLiveController::class, 'join']);
@@ -315,6 +317,7 @@ Route::prefix('client')->group(function () {
             Route::post('/generate-slugs', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'generateSlugs']);
             Route::post('/{id}/toggle-favorite', [\App\Http\Controllers\Api\mobile\client\EventController::class, 'toggleEvent']);
             Route::get('/{id}/live/playback', [UserLiveController::class, 'playback']);
+            Route::post('/{id}/live/presence', [UserLiveController::class, 'presence'])->middleware('throttle:10,1');
             Route::get('/{id}/live-agora/join', [UserAgoraLiveController::class, 'join']);
             Route::get('/{id}/live-agora/guest', [UserAgoraLiveController::class, 'guest']);
             Route::post('/{id}/live-agora/presence', [UserAgoraLiveController::class, 'presence'])->middleware('throttle:10,1');
